@@ -44,6 +44,7 @@ enum RawToken<'a> {
 
 // wat een kankerlelijke functie is mich dat hie
 fn split_off_string_delims(mut s: &str) -> Vec<&str> {
+    if s == "::" { return vec!["::"] } 
     let mut ret = Vec::new();
     if let Some(new_s) = s.strip_prefix('"') {
         s = new_s;
@@ -63,7 +64,12 @@ fn split_off_string_delims(mut s: &str) -> Vec<&str> {
                 ret.push(new_s);
                 ret.push(",")
             } else {
-                ret.push(s);
+                if let Some(new_s) = s.strip_suffix(':') {
+                    ret.push(new_s);
+                    ret.push(":")
+                } else {
+                    ret.push(s);
+                }
             }
         }
     }
@@ -321,11 +327,15 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
                 }
                 ).collect();
 
+
                 match style_map.add_style(target, properties) {
                     Ok(_) => {}
                     Err(e) => panic!("{e}"),
                 }
             }
+
+            // make sure that properties like height and width are present if the user hasn't overridden them
+            style_map.fill_in(StyleMap::default());
 
             style_map
         } else {

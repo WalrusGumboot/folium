@@ -7,18 +7,20 @@
         title    :: text ( "Hallo" ),
         subtitle :: text ( "Ondertitel" )
     )
-    
+
     slide {
-        width  : 1920,
-        height : 1080,
-        test   : "joop",
-        test2  : false,
+        width  : 500,
+        height : 500,
     }
 ]
 
 [
     row (
-        text ( "Hier is wat tekst." ),
+        padding ( text ( "Hier is wat tekst." ) ),
         text ( "Hier nog wat meer tekst." )
     )
+
+    padding {
+        amount : 12,
+    }
 ]

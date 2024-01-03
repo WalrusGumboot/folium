@@ -119,6 +119,12 @@ impl StyleMap {
             Ok(())
         }
     }
+
+    pub fn fill_in(&mut self, other: Self) {
+        for (target, properties) in other.styles {
+            let _ = self.add_style(target, properties);
+        }
+    }
 }
 
 impl Default for StyleMap {
