@@ -1,0 +1,16 @@
+[
+    joop :: centre (
+        kaas :: padding (
+            row (
+                text ( "Uw moeder." ),
+                text ( "En de uwe." )
+            )
+        )
+    )
+]
+
+[
+    col (
+        title :: 
+    )
+]

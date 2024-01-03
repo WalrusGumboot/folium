@@ -1,0 +1,78 @@
+--- std.flm ---
+
+// datatypes:
+// - string
+// - number
+// - colour
+// - list<T>
+// - map<K, V>
+// - content
+
+// layout elements:
+// - slide
+// - row
+// - column
+// - centre
+// - padding
+// - text
+// - image
+// - code
+// - none
+
+
+// variables: let keyword
+
+let theme: Map<string, colour> = {
+    "primary": #2162d8,
+    "secondary": #3fb7cb,
+    "text": #020214,
+    "background": #e6e5c2
+}
+
+// style keyword
+
+style default [
+    slide {
+        bg: theme["background"]
+        width: 1920
+        height: 1080
+    }
+
+    text {
+        font: "Iosevka Nerd Font"
+        fill: theme["text"]
+    }
+]
+
+// slide definition: def keyword
+// should contain a line with `content = `
+
+def title -> default [
+    content = col (
+        titleText :: text,
+        subtitle  :: text
+    )
+
+    title {
+        size: 64pt
+        fill: theme["primary"]
+    }
+
+    slide {
+        numbering: false
+    }
+]
+
+def key-point -> default [
+    content = centre (
+        value :: text
+    )
+
+    value {
+        size: 64pt
+    }
+
+    slide {
+        numbering: false
+    }
+]
