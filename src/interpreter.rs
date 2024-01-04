@@ -1,11 +1,13 @@
+use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
-use std::{collections::HashMap, fs};
 
 use crate::ast::{
-    AbstractElementData, AbstractElementID, GlobalState, PropertyValue, Slide, StyleMap,
-    StyleTarget, CENTRE_DUMMY, CODE_DUMMY, COL_DUMMY, NONE_DUMMY, PADDING_DUMMY, ROW_DUMMY,
-    TEXT_DUMMY,
+    AbstractElementData, AbstractElementID, GlobalState, PropertyValue, Slide, CENTRE_DUMMY,
+    CODE_DUMMY, COL_DUMMY, NONE_DUMMY, PADDING_DUMMY, ROW_DUMMY, TEXT_DUMMY,
 };
+
+use crate::style::{StyleMap, StyleTarget};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Token<'a> {
@@ -44,7 +46,9 @@ enum RawToken<'a> {
 
 // wat een kankerlelijke functie is mich dat hie
 fn split_off_string_delims(mut s: &str) -> Vec<&str> {
-    if s == "::" { return vec!["::"] } 
+    if s == "::" {
+        return vec!["::"];
+    }
     let mut ret = Vec::new();
     if let Some(new_s) = s.strip_prefix('"') {
         s = new_s;
@@ -306,6 +310,7 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
                     &Ident("code") => StyleTarget::Anonymous(CODE_DUMMY),
                     &Ident("none") => StyleTarget::Anonymous(NONE_DUMMY),
                     &Ident("img") => todo!(),
+                    // TODO: verify that this name exists in the slide
                     &Ident(name) => StyleTarget::Named(name.to_string()),
                     other_token => unreachable!(
                         "found non-ident token {other_token:?} while parsing style data"
@@ -327,7 +332,6 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
                 }
                 ).collect();
 
-
                 match style_map.add_style(target, properties) {
                     Ok(_) => {}
                     Err(e) => panic!("{e}"),
@@ -342,7 +346,7 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
             StyleMap::default()
         };
 
-        dbg!(&style_map);
+        // dbg!(&style_map);
 
         let slide = Slide::new(&global, content_root_id, style_map);
         global.push_slide(slide);

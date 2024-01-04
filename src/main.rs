@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 
-use ast::GlobalState;
-
 mod ast;
 mod interpreter;
+mod style;
 
 fn main() {
-    let state = GlobalState::new();
+    let state = ast::GlobalState::new();
     interpreter::load(&state, "test.flm").unwrap();
-    // println!("{}", state);
+    println!("{}", state);
 }

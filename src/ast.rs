@@ -1,9 +1,12 @@
-use std::{cell::RefCell, collections::HashMap, path::PathBuf};
+use std::cell::RefCell;
+use std::path::PathBuf;
+
+use crate::style::StyleMap;
 
 #[derive(Clone, Debug)]
 pub struct GlobalState {
     unassigned_id: RefCell<AbstractElementID>,
-    slides: RefCell<Vec<Slide>>,
+    pub slides: RefCell<Vec<Slide>>,
     elements: RefCell<Vec<AbstractElement>>,
 }
 
@@ -27,8 +30,9 @@ impl GlobalState {
         name: Option<String>,
     ) -> AbstractElementID {
         let id = self.generate_id();
-        let mut elements = self.elements.borrow_mut();
-        elements.push(AbstractElement { data, name, id });
+        self.elements
+            .borrow_mut()
+            .push(AbstractElement { data, name, id });
 
         id
     }
@@ -39,6 +43,43 @@ impl GlobalState {
         let mut id = self.unassigned_id.borrow_mut();
         *id = AbstractElementID(id.0 + 1);
         *id
+    }
+
+    pub fn get_element_by_id(&self, id: AbstractElementID) -> Option<AbstractElement> {
+        self.elements
+            .borrow()
+            .iter()
+            .find(|elem| elem.id == id)
+            .cloned()
+    }
+
+    pub fn traverse(&self, id: AbstractElementID) -> Vec<AbstractElementID> {
+        let elem = self
+            .get_element_by_id(id)
+            .expect(&format!("{id} is not present"));
+        let all_children = match elem.data {
+            AbstractElementData::Row(children) | AbstractElementData::Col(children) => children
+                .into_iter()
+                .flat_map(|child| self.traverse(child))
+                .collect(),
+            AbstractElementData::Centre(child) | AbstractElementData::Padding(child) => {
+                self.traverse(child)
+            }
+            AbstractElementData::Text(_)
+            | AbstractElementData::Code(_)
+            | AbstractElementData::Image(_)
+            | AbstractElementData::None => Vec::new(),
+        };
+
+        [[id].as_slice(), all_children.as_slice()].concat()
+    }
+
+    pub fn get_slide_elements(&self, slide: &Slide) -> Vec<AbstractElement> {
+        let slide_root_id = slide.content;
+        self.traverse(slide_root_id)
+            .iter()
+            .filter_map(|id| self.get_element_by_id(*id))
+            .collect()
     }
 }
 
@@ -54,7 +95,10 @@ impl std::fmt::Display for GlobalState {
         for elem in self.elements.borrow().iter() {
             writeln!(f, "    {elem:?}")?;
         }
-
+        writeln!(f, "Slides:")?;
+        for elem in self.slides.borrow().iter() {
+            writeln!(f, "    {elem:?}")?;
+        }
         Ok(())
     }
 }
@@ -81,9 +125,13 @@ pub const CODE_DUMMY: AbstractElementData = AbstractElementData::Code(String::ne
 pub const NONE_DUMMY: AbstractElementData = AbstractElementData::None;
 // pub const IMAGE_DUMMY: AbstractElementData = AbstractElementData::Image(PathBuf::from("/"));
 
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct AbstractElementID(u32);
+impl std::fmt::Display for AbstractElementID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<ID {}>", self.0)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct AbstractElement {
@@ -92,52 +140,9 @@ pub struct AbstractElement {
     name: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum StyleTarget {
-    Named(String),
-    Anonymous(AbstractElementData),
-    Slide,
-}
-
-#[derive(Clone, Debug)]
-pub struct StyleMap {
-    styles: HashMap<StyleTarget, HashMap<String, PropertyValue>>,
-}
-
-impl StyleMap {
-    pub fn new() -> Self {
-        Self {
-            styles: HashMap::new()
-        }
-    }
-
-    pub fn add_style(&mut self, target: StyleTarget, properties: HashMap<String, PropertyValue>) -> Result<(), String> {
-        if self.styles.contains_key(&target) {
-            Err(String::from("style target was already present in the style map"))
-        } else {
-            self.styles.insert(target, properties);
-            Ok(())
-        }
-    }
-
-    pub fn fill_in(&mut self, other: Self) {
-        for (target, properties) in other.styles {
-            let _ = self.add_style(target, properties);
-        }
-    }
-}
-
-impl Default for StyleMap {
-    fn default() -> Self {
-        Self {
-            styles: HashMap::from([(
-                StyleTarget::Slide,
-                HashMap::from([
-                    (String::from("width"), PropertyValue::Number(1920)),
-                    (String::from("height"), PropertyValue::Number(1080)),
-                ]),
-            )]),
-        }
+impl AbstractElement {
+    pub fn data(&self) -> &AbstractElementData {
+        &self.data
     }
 }
 
@@ -155,6 +160,14 @@ impl Slide {
             styles,
             id: global.generate_id(),
         }
+    }
+
+    pub fn style_map(&self) -> &StyleMap {
+        &self.styles
+    }
+
+    pub fn id(&self) -> AbstractElementID {
+        self.id
     }
 }
 #[derive(Clone, Debug, PartialEq)]

@@ -3,6 +3,10 @@
 ]
 
 [
+    none ( )
+]
+
+[
     col (
         title    :: text ( "Hallo" ),
         subtitle :: text ( "Ondertitel" )
@@ -10,7 +14,7 @@
 
     slide {
         width  : 500,
-        height : 500,
+        height : 5  00,
     }
 ]
 
