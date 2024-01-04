@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod ast;
+mod error;
 mod interpreter;
 mod style;
 

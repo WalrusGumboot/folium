@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::path::PathBuf;
 
+use crate::error::FoliumError;
 use crate::style::StyleMap;
 
 #[derive(Clone, Debug)]
@@ -27,12 +28,16 @@ impl GlobalState {
     pub fn push_element(
         &self,
         data: AbstractElementData,
+        el_type: ElementType,
         name: Option<String>,
     ) -> AbstractElementID {
         let id = self.generate_id();
-        self.elements
-            .borrow_mut()
-            .push(AbstractElement { data, name, id });
+        self.elements.borrow_mut().push(AbstractElement {
+            data,
+            name,
+            id,
+            el_type,
+        });
 
         id
     }
@@ -56,7 +61,7 @@ impl GlobalState {
     pub fn traverse(&self, id: AbstractElementID) -> Vec<AbstractElementID> {
         let elem = self
             .get_element_by_id(id)
-            .expect(&format!("{id} is not present"));
+            .unwrap_or_else(|| panic!("{id} is not present"));
         let all_children = match elem.data {
             AbstractElementData::Row(children) | AbstractElementData::Col(children) => children
                 .into_iter()
@@ -115,15 +120,57 @@ pub enum AbstractElementData {
     None,
 }
 
-pub const ROW_DUMMY: AbstractElementData = AbstractElementData::Row(Vec::new());
-pub const COL_DUMMY: AbstractElementData = AbstractElementData::Col(Vec::new());
-pub const CENTRE_DUMMY: AbstractElementData = AbstractElementData::Centre(AbstractElementID(0));
-pub const PADDING_DUMMY: AbstractElementData = AbstractElementData::Padding(AbstractElementID(0));
-pub const TEXT_DUMMY: AbstractElementData = AbstractElementData::Text(String::new());
-pub const CODE_DUMMY: AbstractElementData = AbstractElementData::Code(String::new());
-/// semantically equivalent to every instance of the None value but whatever
-pub const NONE_DUMMY: AbstractElementData = AbstractElementData::None;
-// pub const IMAGE_DUMMY: AbstractElementData = AbstractElementData::Image(PathBuf::from("/"));
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum ElementType {
+    Row,
+    Col,
+    Centre,
+    Padding,
+    Text,
+    Code,
+    Image,
+    ElNone, // preferred naming over just None, which causes confusion with Option::None
+}
+
+impl ElementType {
+    pub const fn string_rep(&self) -> &'static str {
+        match self {
+            ElementType::Row => "row",
+            ElementType::Col => "col",
+            ElementType::Centre => "centre",
+            ElementType::Padding => "padding",
+            ElementType::Text => "text",
+            ElementType::Code => "code",
+            ElementType::Image => "image",
+            ElementType::ElNone => "none",
+        }
+    }
+}
+
+impl std::fmt::Display for ElementType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.string_rep())
+    }
+}
+
+impl<'a> TryFrom<&'a str> for ElementType {
+    type Error = FoliumError<'a>;
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value {
+            "col" => Ok(ElementType::Col),
+            "row" => Ok(ElementType::Row),
+            "text" => Ok(ElementType::Text),
+            "code" => Ok(ElementType::Code),
+            "img" => Ok(ElementType::Image),
+            "none" => Ok(ElementType::ElNone),
+            "padding" => Ok(ElementType::Padding),
+            "centre" => Ok(ElementType::Centre),
+            other => Err(FoliumError::UnknownType {
+                offending_token: other,
+            }),
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct AbstractElementID(u32);
@@ -136,6 +183,7 @@ impl std::fmt::Display for AbstractElementID {
 #[derive(Clone, Debug)]
 pub struct AbstractElement {
     data: AbstractElementData,
+    el_type: ElementType,
     id: AbstractElementID,
     name: Option<String>,
 }
@@ -170,7 +218,7 @@ impl Slide {
         self.id
     }
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PropertyValue {
     Number(u32),
     // Size(u32),

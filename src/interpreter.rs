@@ -2,15 +2,15 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use crate::ast::ElementType::*;
 use crate::ast::{
-    AbstractElementData, AbstractElementID, GlobalState, PropertyValue, Slide, CENTRE_DUMMY,
-    CODE_DUMMY, COL_DUMMY, NONE_DUMMY, PADDING_DUMMY, ROW_DUMMY, TEXT_DUMMY,
+    AbstractElementData, AbstractElementID, ElementType, GlobalState, PropertyValue, Slide,
 };
-
+use crate::error::FoliumError;
 use crate::style::{StyleMap, StyleTarget};
 
-#[derive(Clone, Debug, PartialEq)]
-enum Token<'a> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Token<'a> {
     /// in source code: token [
     OpeningSlideParen,
     /// in source code: token ]
@@ -59,23 +59,17 @@ fn split_off_string_delims(mut s: &str) -> Vec<&str> {
         ret.push(new_s);
         ret.push("\"");
         ret.push(",")
+    } else if let Some(new_s) = s.strip_suffix('"') {
+        ret.push(new_s);
+        ret.push("\"")
+    } else if let Some(new_s) = s.strip_suffix(',') {
+        ret.push(new_s);
+        ret.push(",")
+    } else if let Some(new_s) = s.strip_suffix(':') {
+        ret.push(new_s);
+        ret.push(":")
     } else {
-        if let Some(new_s) = s.strip_suffix('"') {
-            ret.push(new_s);
-            ret.push("\"")
-        } else {
-            if let Some(new_s) = s.strip_suffix(',') {
-                ret.push(new_s);
-                ret.push(",")
-            } else {
-                if let Some(new_s) = s.strip_suffix(':') {
-                    ret.push(new_s);
-                    ret.push(":")
-                } else {
-                    ret.push(s);
-                }
-            }
-        }
+        ret.push(s);
     }
 
     ret
@@ -85,39 +79,109 @@ fn split_off_string_delims(mut s: &str) -> Vec<&str> {
 fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = Token<'a>>>(
     mut iter: I,
     global: &'a GlobalState,
-) -> AbstractElementID {
+) -> Result<AbstractElementID, FoliumError> {
     let content_name_or_type = iter
         .next()
         .expect("could not parse name of following content item");
-    // TODO: check for name duplicates
-    let (maybe_name, content_type) = match content_name_or_type {
-        Ident("col") => (None, "col"),
-        Ident("row") => (None, "row"),
-        Ident("text") => (None, "text"),
-        Ident("code") => (None, "code"),
-        Ident("img") => (None, "img"),
-        Ident("none") => (None, "none"),
-        Ident("padding") => (None, "padding"),
-        Ident("centre") => (None, "centre"),
-        Ident(other) => {
-            // println!("skipped {:?}", iter.next());
-            iter.next();
-            // NOTE: if an anonymous element of an unknown type is given, this branch is hit too
-            // it will fail due to the expect on the line below, but it's kind of ugly nonetheless
-            let content_type = match iter
-                .next()
-                .expect("could not find next token to parse type")
-            {
-                Ident(val) => val,
-                other => panic!("token expected to be of type but was {other:?} instead"),
-            };
-            (Some(String::from(other)), content_type)
+
+    // TODO: check if name isn't already in use
+
+    let (maybe_name, element_type, should_check_opening_paren): (Option<String>, ElementType, bool) = match content_name_or_type {
+        Ident(ident_val) => {
+            if let Ok(el_type) = ElementType::try_from(ident_val) {
+                // the current element should be anonymous! if a Definition token :: follows,
+                // we should throw an error
+                match iter.next() {
+                    Some(Definition) => {
+                        return Err(FoliumError::UseOfContentTypeName {
+                            word: el_type.string_rep(),
+                        })
+                    }
+                    Some(OpeningArgsParen) => {}
+                    Some(other_token) => {
+                        return Err(FoliumError::ExpectedToken {
+                            expected: OpeningArgsParen,
+                            got: other_token,
+                        })
+                    }
+                    None => {
+                        return Err(FoliumError::UnexpectedFileEndWithToken {
+                            expected: OpeningArgsParen,
+                        })
+                    }
+                }
+
+                (None, el_type, false)
+            } else {
+                // We assume, then, that the Ident contains the name for a Definition.
+                match iter.next() {
+                    Some(Definition) => {
+                        // We're defining an element, so the type should be a valid element name
+                        match iter.next() {
+                            None => {
+                                return Err(FoliumError::UnexpectedFileEndWithReason {
+                                    expected: "a content type",
+                                })
+                            }
+                            Some(Ident(possibly_el_type)) => {
+                                if let Ok(el_type) = ElementType::try_from(possibly_el_type) {
+                                    (Some(ident_val.to_string()), el_type, true)
+                                } else {
+                                    return Err(FoliumError::UnknownType {
+                                        offending_token: possibly_el_type,
+                                    });
+                                }
+                            }
+                            Some(other_token) => {
+                                return Err(FoliumError::ExpectedReason {
+                                    expected: "a content type",
+                                    got: other_token,
+                                })
+                            }
+                        }
+                    }
+                    Some(other_token) => {
+                        return Err(FoliumError::ExpectedToken {
+                            expected: Definition,
+                            got: other_token,
+                        })
+                    }
+                    None => {
+                        return Err(FoliumError::UnexpectedFileEndWithToken {
+                            expected: Definition,
+                        })
+                    }
+                }
+            }
         }
-        other_token => panic!("invalid token found in content definition: {other_token:?}"),
+        other_token => {
+            return Err(FoliumError::ExpectedReason {
+                expected: "a content type or name",
+                got: other_token,
+            })
+        }
     };
 
-    // println!("element will have name {maybe_name:?} and type {content_type}");
-    assert_eq!(iter.next().unwrap(), OpeningArgsParen);
+    // Assert that this is followed by an OpeningArgsParen token ( if we
+    // haven't done so already
+    if should_check_opening_paren {
+        match iter.next() {
+            Some(OpeningArgsParen) => {}
+            Some(other_token) => {
+                return Err(FoliumError::ExpectedToken {
+                    expected: OpeningArgsParen,
+                    got: other_token,
+                })
+            }
+            None => {
+                return Err(FoliumError::UnexpectedFileEndWithToken {
+                    expected: OpeningArgsParen,
+                })
+            }
+        }
+    }
+
+    dbg!(&iter);
 
     let mut brackets: u8 = 1;
     let content_tokens = iter
@@ -132,68 +196,98 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = Token<'a>>>
         })
         .collect::<Vec<_>>();
 
-    // println!("{content_tokens:?}");
+    dbg!(&content_tokens);
 
-    match content_type {
-        "none" => global.push_element(AbstractElementData::None, maybe_name),
-        "text" => global.push_element(
+    Ok(match element_type {
+        ElNone => global.push_element(AbstractElementData::None, element_type, maybe_name),
+        Text => global.push_element(
             AbstractElementData::Text(match content_tokens[0] {
                 Value(PropertyValue::String(ref s)) => s.clone(),
                 _ => panic!("text content did not contain text value token"),
             }),
+            element_type,
             maybe_name,
         ),
-        "code" => global.push_element(
+        Code => global.push_element(
             AbstractElementData::Code(match content_tokens[0] {
                 Value(PropertyValue::String(ref s)) => s.clone(),
                 _ => panic!("code content did not contain text value token"),
             }),
+            element_type,
             maybe_name,
         ),
-        "img" => global.push_element(
+        Image => global.push_element(
             AbstractElementData::Image(match content_tokens[0] {
                 Value(PropertyValue::String(ref s)) => s.clone().into(),
                 _ => panic!("img content did not contain text value token"),
             }),
+            element_type,
             maybe_name,
         ),
-        "centre" => global.push_element(
-            AbstractElementData::Centre(parse_content_definition(
-                content_tokens.into_iter(),
-                global,
-            )),
+        Centre => global.push_element(
+            AbstractElementData::Centre(
+                parse_content_definition(content_tokens.into_iter(), global)
+                    .map_err(|err| {
+                        eprintln!("{err}");
+                        panic!();
+                    })
+                    .unwrap(),
+            ),
+            element_type,
             maybe_name,
         ),
-        "padding" => global.push_element(
-            AbstractElementData::Padding(parse_content_definition(
-                content_tokens.into_iter(),
-                global,
-            )),
+        Padding => global.push_element(
+            AbstractElementData::Padding(
+                parse_content_definition(content_tokens.into_iter(), global)
+                    .map_err(|err| {
+                        eprintln!("{err}");
+                        panic!();
+                    })
+                    .unwrap(),
+            ),
+            element_type,
             maybe_name,
         ),
-        "row" => {
+        Row => {
             let children_ids = content_tokens
                 .split(|token| token == &ListSeparator)
                 .map(|child_tokens| {
-                    parse_content_definition(child_tokens.into_iter().cloned(), global)
+                    parse_content_definition(child_tokens.iter().cloned(), global)
+                        .map_err(|err| {
+                            eprintln!("{err}");
+                            panic!();
+                        })
+                        .unwrap()
                 })
                 .collect::<Vec<_>>();
-            global.push_element(AbstractElementData::Row(children_ids), maybe_name)
+            global.push_element(
+                AbstractElementData::Row(children_ids),
+                element_type,
+                maybe_name,
+            )
         }
-        "col" => {
+        Col => {
             let children_ids = content_tokens
                 .split(|token| token == &ListSeparator)
                 .map(|child_tokens| {
-                    parse_content_definition(child_tokens.into_iter().cloned(), global)
+                    parse_content_definition(child_tokens.iter().cloned(), global)
+                        .map_err(|err| {
+                            eprintln!("{err}");
+                            panic!();
+                        })
+                        .unwrap()
                 })
                 .collect::<Vec<_>>();
-            global.push_element(AbstractElementData::Col(children_ids), maybe_name)
+            global.push_element(
+                AbstractElementData::Col(children_ids),
+                element_type,
+                maybe_name,
+            )
         }
-        _ => unreachable!("hit content type for which no parser exists"),
-    }
+    })
 }
 
-pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), String> {
+pub fn load<P: AsRef<Path>>(global: &GlobalState, path: P) -> Result<(), FoliumError> {
     let source: &'static mut str = fs::read_to_string(path)
         .expect("could not open file")
         .lines()
@@ -206,7 +300,7 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
         .split(' ')
         .flat_map(|s| s.split_inclusive(&['(', ')', '[', ']', '{', '}']))
         .flat_map(split_off_string_delims)
-        .filter(|s| *s != "")
+        .filter(|s| !s.is_empty())
         .map(|s| match s {
             "[" => RawToken::AlreadyParseable(OpeningSlideParen),
             "]" => RawToken::AlreadyParseable(ClosingSlideParen),
@@ -289,11 +383,16 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
     for slide_tokens in grouped_tokens {
         // println!("{slide_tokens:?}");
         let mut iter = slide_tokens.into_iter();
-        let content_root_id = parse_content_definition(&mut iter, &global);
+        let content_root_id = parse_content_definition(&mut iter, global)
+            .map_err(|err| {
+                eprintln!("{err}");
+                panic!()
+            })
+            .unwrap();
 
         let remaining_style_tokens = iter.collect::<Vec<_>>();
 
-        let style_map: StyleMap = if remaining_style_tokens.len() > 0 {
+        let style_map: StyleMap = if !remaining_style_tokens.is_empty() {
             let individual_styles = remaining_style_tokens
                 .split(|token| *token == ClosingParamsParen)
                 .filter(|slice| !slice.is_empty());
@@ -301,20 +400,19 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
 
             for individual_style in individual_styles {
                 let target = match &individual_style[0] {
-                    &Ident("slide") => StyleTarget::Slide,
-                    &Ident("row") => StyleTarget::Anonymous(ROW_DUMMY),
-                    &Ident("col") => StyleTarget::Anonymous(COL_DUMMY),
-                    &Ident("centre") => StyleTarget::Anonymous(CENTRE_DUMMY),
-                    &Ident("padding") => StyleTarget::Anonymous(PADDING_DUMMY),
-                    &Ident("text") => StyleTarget::Anonymous(TEXT_DUMMY),
-                    &Ident("code") => StyleTarget::Anonymous(CODE_DUMMY),
-                    &Ident("none") => StyleTarget::Anonymous(NONE_DUMMY),
-                    &Ident("img") => todo!(),
-                    // TODO: verify that this name exists in the slide
-                    &Ident(name) => StyleTarget::Named(name.to_string()),
-                    other_token => unreachable!(
-                        "found non-ident token {other_token:?} while parsing style data"
-                    ),
+                    &Ident(ident_val) => {
+                        if let Ok(el_type) = ElementType::try_from(ident_val) {
+                            StyleTarget::Anonymous(el_type)
+                        } else {
+                            StyleTarget::Named(ident_val.to_owned())
+                        }
+                    }
+                    other_token => {
+                        return Err(FoliumError::ExpectedReason {
+                            expected: "a style target identifier",
+                            got: other_token.clone(),
+                        })
+                    }
                 };
 
                 let properties: HashMap<String, PropertyValue> = individual_style[2..].chunks_exact(4).map(|slice| &slice[0..3]).map(|def| {
@@ -348,7 +446,7 @@ pub fn load<'a, P: AsRef<Path>>(global: &'a GlobalState, path: P) -> Result<(), 
 
         // dbg!(&style_map);
 
-        let slide = Slide::new(&global, content_root_id, style_map);
+        let slide = Slide::new(global, content_root_id, style_map);
         global.push_slide(slide);
     }
 
