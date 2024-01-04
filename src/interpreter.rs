@@ -3,11 +3,9 @@ use std::fs;
 use std::path::Path;
 
 use crate::ast::ElementType::*;
-use crate::ast::{
-    AbstractElementData, AbstractElementID, ElementType, GlobalState, PropertyValue, Slide,
-};
+use crate::ast::{AbstractElementData, AbstractElementID, ElementType, GlobalState, Slide};
 use crate::error::FoliumError;
-use crate::style::{StyleMap, StyleTarget};
+use crate::style::{PropertyValue, StyleMap, StyleTarget};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token<'a> {
@@ -86,7 +84,11 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = Token<'a>>>
 
     // TODO: check if name isn't already in use
 
-    let (maybe_name, element_type, should_check_opening_paren): (Option<String>, ElementType, bool) = match content_name_or_type {
+    let (maybe_name, element_type, should_check_opening_paren): (
+        Option<String>,
+        ElementType,
+        bool,
+    ) = match content_name_or_type {
         Ident(ident_val) => {
             if let Ok(el_type) = ElementType::try_from(ident_val) {
                 // the current element should be anonymous! if a Definition token :: follows,

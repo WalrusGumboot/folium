@@ -218,10 +218,3 @@ impl Slide {
         self.id
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum PropertyValue {
-    Number(u32),
-    // Size(u32),
-    String(String),
-    Boolean(bool),
-}

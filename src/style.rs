@@ -2,8 +2,15 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use crate::ast::ElementType;
-use crate::ast::PropertyValue;
 use crate::error::FoliumError;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PropertyValue {
+    Number(u32),
+    // Size(u32),
+    String(String),
+    Boolean(bool),
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StyleTarget {
