@@ -167,13 +167,14 @@ impl<'a> TryFrom<&'a str> for ElementType {
             "centre" => Ok(ElementType::Centre),
             other => Err(FoliumError::UnknownType {
                 offending_token: other,
+                location: Default::default(),
             }),
         }
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct AbstractElementID(u32);
+pub struct AbstractElementID(pub u32);
 impl std::fmt::Display for AbstractElementID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "<ID {}>", self.0)
@@ -191,6 +192,10 @@ pub struct AbstractElement {
 impl AbstractElement {
     pub fn data(&self) -> &AbstractElementData {
         &self.data
+    }
+
+    pub fn name(&self) -> &Option<String> {
+        &self.name
     }
 }
 

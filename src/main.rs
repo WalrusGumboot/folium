@@ -7,6 +7,6 @@ mod style;
 
 fn main() {
     let state = ast::GlobalState::new();
-    interpreter::load(&state, "test.flm").unwrap();
+    interpreter::load_from_file(&state, "test.flm").unwrap();
     println!("{}", state);
 }
