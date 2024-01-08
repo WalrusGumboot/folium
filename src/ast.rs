@@ -120,7 +120,7 @@ pub enum AbstractElementData {
     None,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum ElementType {
     Row,
     Col,
@@ -197,6 +197,14 @@ impl AbstractElement {
     pub fn name(&self) -> &Option<String> {
         &self.name
     }
+
+    pub fn el_type(&self) -> ElementType {
+        self.el_type
+    }
+
+    pub fn id(&self) -> AbstractElementID {
+        self.id
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -217,6 +225,10 @@ impl Slide {
 
     pub fn style_map(&self) -> &StyleMap {
         &self.styles
+    }
+
+    pub fn content(&self) -> AbstractElementID {
+        self.content
     }
 
     pub fn id(&self) -> AbstractElementID {

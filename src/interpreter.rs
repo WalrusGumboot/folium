@@ -262,7 +262,9 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
         })
         .collect::<Vec<_>>();
 
-    // dbg!(&content_tokens);
+    for fat_token in &content_tokens {
+        println!("[DBG] {:?}", fat_token.token);
+    } 
 
     Ok(match element_type {
         ElNone => global.push_element(AbstractElementData::None, element_type, maybe_name),
@@ -336,6 +338,7 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
             let children_ids = content_tokens
                 .split(|token| token.token == ListSeparator)
                 .map(|child_tokens| {
+                    dbg!(&child_tokens);
                     parse_content_definition(child_tokens.iter().cloned(), global)
                         .map_err(|err| {
                             eprintln!("{err}");
@@ -412,6 +415,11 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                 line_idx: line,
                 col_idx: col,
                 value: StringDelim,
+            },
+            ',' => RawToken::AlreadyParsed {
+                line_idx: line,
+                col_idx: col,
+                value: ListSeparator,
             },
             ':' => {
                 if all_characters.next_if(|&(_, _, c)| c == ':').is_some() {
@@ -685,8 +693,6 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
         } else {
             StyleMap::default()
         };
-
-        dbg!(&style_map);
 
         let slide = Slide::new(global, content_root_id, style_map);
         global.push_slide(slide);

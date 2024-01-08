@@ -102,19 +102,41 @@ impl StyleMap {
 
 impl Default for StyleMap {
     fn default() -> Self {
+        // TODO: make this nicer, e.g. compile-time errors if new enum variants are ever introduced
         Self {
             styles: HashMap::from([
+                (StyleTarget::Slide, StyleTarget::Slide.default_style()),
                 (
-                    StyleTarget::Slide,
-                    HashMap::from([
-                        (String::from("width"), PropertyValue::Number(1920)),
-                        (String::from("height"), PropertyValue::Number(1080)),
-                        (String::from("margin"), PropertyValue::Number(20)),
-                    ]),
+                    StyleTarget::Anonymous(ElementType::Centre),
+                    StyleTarget::Anonymous(ElementType::Centre).default_style(),
+                ),
+                (
+                    StyleTarget::Anonymous(ElementType::Code),
+                    StyleTarget::Anonymous(ElementType::Code).default_style(),
+                ),
+                (
+                    StyleTarget::Anonymous(ElementType::Col),
+                    StyleTarget::Anonymous(ElementType::Col).default_style(),
+                ),
+                (
+                    StyleTarget::Anonymous(ElementType::ElNone),
+                    StyleTarget::Anonymous(ElementType::ElNone).default_style(),
+                ),
+                (
+                    StyleTarget::Anonymous(ElementType::Image),
+                    StyleTarget::Anonymous(ElementType::Image).default_style(),
                 ),
                 (
                     StyleTarget::Anonymous(ElementType::Padding),
-                    HashMap::from([(String::from("amount"), PropertyValue::Number(12))]),
+                    StyleTarget::Anonymous(ElementType::Padding).default_style(),
+                ),
+                (
+                    StyleTarget::Anonymous(ElementType::Row),
+                    StyleTarget::Anonymous(ElementType::Row).default_style(),
+                ),
+                (
+                    StyleTarget::Anonymous(ElementType::Text),
+                    StyleTarget::Anonymous(ElementType::Text).default_style(),
                 ),
             ]),
         }

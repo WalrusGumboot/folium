@@ -1,3 +1,13 @@
 [
-   joop :: text ( "Kaas." )
+   col (
+      text ( "hoofd" ) ,
+      text ( "schouders" ) ,
+      text ( "knie" ) ,
+      text ( "teen" ) ,
+      padding ( text ( "je moeder" ) )
+   )
+
+   padding {
+      amount: 30
+   }
 ]
