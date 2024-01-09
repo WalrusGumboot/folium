@@ -1,10 +1,13 @@
 [
-   col (
-      text ( "hoofd" ) ,
-      text ( "schouders" ) ,
-      text ( "knie" ) ,
-      text ( "teen" ) ,
-      padding ( text ( "je moeder" ) )
+   row ( 
+      col (
+         text ( "hoofd" ) ,
+         text ( "schouders" ) ,
+         text ( "knie" ) ,
+         row ( text ( "teen" ), code ( "let x: usize = 42;" ) ),
+         padding ( text ( "je moeder" ) )
+      ), 
+      text ( "kaas" )
    )
 
    padding {

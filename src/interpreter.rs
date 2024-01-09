@@ -7,6 +7,8 @@ use crate::ast::{AbstractElementData, AbstractElementID, ElementType, GlobalStat
 use crate::error::FoliumError;
 use crate::style::{PropertyValue, StyleMap, StyleTarget};
 
+use itertools::Itertools;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token<'a> {
     /// in source code: token [
@@ -247,12 +249,9 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
         }
     }
 
-    // dbg!(&iter);
-
     let mut brackets: u8 = 1;
     let content_tokens = iter
         .take_while(|token| {
-            // println!("token: {token:?}");
             match token.token {
                 OpeningArgsParen => brackets += 1,
                 ClosingArgsParen => brackets -= 1,
@@ -261,10 +260,6 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
             brackets > 0
         })
         .collect::<Vec<_>>();
-
-    for fat_token in &content_tokens {
-        println!("[DBG] {:?}", fat_token.token);
-    } 
 
     Ok(match element_type {
         ElNone => global.push_element(AbstractElementData::None, element_type, maybe_name),
@@ -316,18 +311,18 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
             element_type,
             maybe_name,
         ),
+        // Problem: splitting on ListSeparators isn't correct, because contained elements may also have
+        // ListSeps in their own definitions
         Row => {
-            let children_ids = content_tokens
-                .split(|token| token.token == ListSeparator)
-                .map(|child_tokens| {
-                    parse_content_definition(child_tokens.iter().cloned(), global)
-                        .map_err(|err| {
-                            eprintln!("{err}");
-                            panic!();
-                        })
+            let children_tokens = split_child_elements(content_tokens.iter().cloned());
+            let children_ids = children_tokens
+                .into_iter()
+                .map(|tokens| {
+                    parse_content_definition(tokens.iter().cloned(), global)
+                        .map_err(|err| panic!("{err}"))
                         .unwrap()
                 })
-                .collect::<Vec<_>>();
+                .collect();
             global.push_element(
                 AbstractElementData::Row(children_ids),
                 element_type,
@@ -335,18 +330,15 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
             )
         }
         Col => {
-            let children_ids = content_tokens
-                .split(|token| token.token == ListSeparator)
-                .map(|child_tokens| {
-                    dbg!(&child_tokens);
-                    parse_content_definition(child_tokens.iter().cloned(), global)
-                        .map_err(|err| {
-                            eprintln!("{err}");
-                            panic!();
-                        })
+            let children_tokens = split_child_elements(content_tokens.iter().cloned());
+            let children_ids = children_tokens
+                .into_iter()
+                .map(|tokens| {
+                    parse_content_definition(tokens.iter().cloned(), global)
+                        .map_err(|err| panic!("{err}"))
                         .unwrap()
                 })
-                .collect::<Vec<_>>();
+                .collect();
             global.push_element(
                 AbstractElementData::Col(children_ids),
                 element_type,
@@ -354,6 +346,54 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
             )
         }
     })
+}
+
+fn split_child_elements<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a>>>(
+    mut iter: I,
+) -> Vec<Vec<FatToken<'a>>> {
+    let mut children: Vec<Vec<FatToken<'a>>> = Vec::new();
+
+    loop {
+        let mut taken_a_bracket = false;
+        let mut brackets: usize = 0;
+
+        let token_group = iter
+            .by_ref()
+            .take_while_inclusive(|token| {
+                match token.token {
+                    OpeningArgsParen => {
+                        taken_a_bracket = true;
+                        brackets += 1;
+                        true
+                    }
+                    ClosingArgsParen => {
+                        brackets -= 1;
+                        brackets != 0 || !taken_a_bracket
+                    }
+                    _ => true,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if token_group.is_empty() {
+            break;
+        } else {
+            if matches!(
+                token_group[0],
+                FatToken {
+                    token: ListSeparator,
+                    ..
+                }
+            ) {
+                // TODO: de-uglify this
+                children.push(token_group.split_at(1).1.to_vec());
+            } else {
+                children.push(token_group);
+            }
+        }
+    }
+
+    children
 }
 
 pub fn load_from_file<'a, P: AsRef<Path> + 'a>(
@@ -444,18 +484,13 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
         });
     }
 
-    // dbg!(&raw_tokens);
-
     let mut contiguous_tokens: Vec<FatToken> = Vec::new();
     let mut tokens_to_ignore: usize = 0;
 
     let mut raw_tokens_iter = raw_tokens.into_iter();
 
     while let Some(next_raw_token) = raw_tokens_iter.next() {
-        // println!("current token: {:?}", next_raw_token);
-
         if tokens_to_ignore > 0 {
-            // println!("should ignore {tokens_to_ignore} tokens, skipping");
             tokens_to_ignore -= 1;
             continue;
         }
@@ -496,7 +531,6 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                 col_idx,
                 value,
             } => {
-                // dbg!(&value);
                 contiguous_tokens.push(FatToken {
                     token: value,
                     location: TokenLocation {
@@ -570,8 +604,6 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
         }
     }
 
-    // dbg!(&contiguous_tokens);
-
     // group tokens by slide
     let mut grouped_tokens: Vec<Vec<FatToken>> = Vec::new();
     let mut current_slide_tokens: Vec<FatToken> = Vec::new();
@@ -594,7 +626,6 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
     }
 
     for slide_tokens in grouped_tokens {
-        // println!("{slide_tokens:?}");
         let mut iter = slide_tokens.into_iter();
         let content_root_id = parse_content_definition(&mut iter, global)
             .map_err(|err| {
@@ -642,7 +673,6 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                     .map(|slice| &slice[0..3])
                     .map(|def| {
                         assert_eq!(def[1].token, Token::ValueAssignment);
-                        dbg!(&def);
                         (
                             (match &def[0] {
                                 FatToken {
@@ -679,11 +709,8 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                     })
                     .collect();
 
-                dbg!(&properties);
-
                 style_map.add_style(target, properties);
 
-                dbg!(&style_map);
             }
 
             // make sure that properties like height and width are present if the user hasn't overridden them
@@ -795,5 +822,23 @@ mod tests {
         let width = slide_style.get(&String::from("width")).unwrap();
         assert_eq!(height, &PropertyValue::Number(500));
         assert_eq!(width, &PropertyValue::Number(1920));
+    }
+
+    #[test]
+    fn col_in_row() {
+        let global = GlobalState::new();
+        let source = String::from(
+            r#"[ row ( text("joop"), col ( text("in kolom"), text("in kolom 2") ) ) ]"#,
+        );
+        assert_eq!(Ok(()), load(&global, source));
+
+        println!("{}", global);
+
+        let row = global.get_element_by_id(AbstractElementID(5)).unwrap();
+        let data = match row.data() {
+            AbstractElementData::Row(val) => val,
+            _ => panic!(),
+        };
+        assert_eq!(data.len(), 2);
     }
 }

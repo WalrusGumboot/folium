@@ -34,7 +34,7 @@ impl AbstractElement {
                         .expect("no style map for rows was found"),
                     "gap",
                 );
-                let single_el_width = (area.w - elems.len() as u32 * row_gap) / elems.len() as u32;
+                let single_el_width = (area.w - (elems.len() - 1) as u32 * row_gap) / elems.len() as u32;
 
                 elems
                     .into_iter()
@@ -62,7 +62,7 @@ impl AbstractElement {
                         .expect("no style map for rows was found"),
                     "gap",
                 );
-                let single_el_height = (area.h - elems.len() as u32 * col_gap) / elems.len() as u32;
+                let single_el_height = (area.h - (elems.len() as u32 - 1) * col_gap) / elems.len() as u32;
                 elems
                     .into_iter()
                     .enumerate()
@@ -104,14 +104,21 @@ impl AbstractElement {
             | AbstractElementData::Text(_)
             | AbstractElementData::Code(_)
             | AbstractElementData::Image(_)
-            | AbstractElementData::None => Vec::from(&[LayoutElement { max_bounds: area, element: self.id() } ]),
+            | AbstractElementData::None => Vec::from(&[LayoutElement {
+                max_bounds: area,
+                element: self.id(),
+            }]),
         }
     }
 }
 
 impl Slide {
     /// Layouting a slide positions elements on the slide.
-    pub fn layout(&self, global: &GlobalState) -> Vec<LayoutElement> {
+    pub fn layout(&self, global: &GlobalState, size_override: Option<Rect>) -> Vec<LayoutElement> {
+        if size_override.is_some() {
+            println!("got size override {:?}", size_override.unwrap());
+        }
+
         let slide_styles = self
             .style_map()
             .styles_for_target(StyleTarget::Slide)
@@ -123,12 +130,12 @@ impl Slide {
         let base_height = extract_number(slide_styles, "height");
         let slide_margin = extract_number(slide_styles, "margin");
 
-        let area = Rect {
+        let area = size_override.unwrap_or(Rect {
             x: slide_margin,
             y: slide_margin,
             w: base_width - 2 * slide_margin,
             h: base_height - 2 * slide_margin,
-        };
+        });
 
         slide_content.layout(global, self.style_map(), area)
     }
