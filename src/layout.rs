@@ -34,7 +34,8 @@ impl AbstractElement {
                         .expect("no style map for rows was found"),
                     "gap",
                 );
-                let single_el_width = (area.w - (elems.len() - 1) as u32 * row_gap) / elems.len() as u32;
+                let single_el_width =
+                    (area.w - (elems.len() - 1) as u32 * row_gap) / elems.len() as u32;
 
                 elems
                     .into_iter()
@@ -62,7 +63,8 @@ impl AbstractElement {
                         .expect("no style map for rows was found"),
                     "gap",
                 );
-                let single_el_height = (area.h - (elems.len() as u32 - 1) * col_gap) / elems.len() as u32;
+                let single_el_height =
+                    (area.h - ((elems.len() as u32 - 1) - 1) * col_gap) / elems.len() as u32;
                 elems
                     .into_iter()
                     .enumerate()

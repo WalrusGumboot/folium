@@ -359,19 +359,17 @@ fn split_child_elements<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a>>>(
 
         let token_group = iter
             .by_ref()
-            .take_while_inclusive(|token| {
-                match token.token {
-                    OpeningArgsParen => {
-                        taken_a_bracket = true;
-                        brackets += 1;
-                        true
-                    }
-                    ClosingArgsParen => {
-                        brackets -= 1;
-                        brackets != 0 || !taken_a_bracket
-                    }
-                    _ => true,
+            .take_while_inclusive(|token| match token.token {
+                OpeningArgsParen => {
+                    taken_a_bracket = true;
+                    brackets += 1;
+                    true
                 }
+                ClosingArgsParen => {
+                    brackets -= 1;
+                    brackets != 0 || !taken_a_bracket
+                }
+                _ => true,
             })
             .collect::<Vec<_>>();
 
@@ -710,7 +708,6 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                     .collect();
 
                 style_map.add_style(target, properties);
-
             }
 
             // make sure that properties like height and width are present if the user hasn't overridden them
