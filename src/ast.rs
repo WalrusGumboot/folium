@@ -86,6 +86,10 @@ impl GlobalState {
             .filter_map(|id| self.get_element_by_id(*id))
             .collect()
     }
+
+    pub fn number_of_slides(&self) -> usize {
+        self.slides.borrow().len()
+    }
 }
 
 impl std::fmt::Display for GlobalState {

@@ -9,6 +9,7 @@ pub enum PropertyValue {
     // Size(u32),
     String(String),
     Boolean(bool),
+    Colour(u8, u8, u8),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -58,6 +59,7 @@ impl StyleTarget {
                 (String::from("width"), PropertyValue::Number(1920)),
                 (String::from("height"), PropertyValue::Number(1080)),
                 (String::from("margin"), PropertyValue::Number(20)),
+                (String::from("bg"), PropertyValue::Colour(235, 218, 199))
             ]),
         }
     }
@@ -81,7 +83,6 @@ impl StyleMap {
 
     pub fn fill_in(&mut self, other: Self) {
         for (target, properties) in other.styles {
-            println!("filling in {properties:?} on {target:?}");
             let existing_styles = self
                 .styles
                 .entry(target.clone())
@@ -156,6 +157,9 @@ pub fn extract_number<S: Into<String> + Display>(
         PropertyValue::Boolean(_) => {
             panic!("Property {property} was found, but is of type Boolean")
         }
+        PropertyValue::Colour(..) => {
+            panic!("Property {property} was found, but is of type Colour")
+        }
     }
 }
 
@@ -172,6 +176,9 @@ pub fn extract_string<S: Into<String> + Display>(
         PropertyValue::Boolean(_) => {
             panic!("Property {property} was found, but is of type Boolean")
         }
+        PropertyValue::Colour(..) => {
+            panic!("Property {property} was found, but is of type Colour")
+        }
     }
 }
 
@@ -186,5 +193,23 @@ pub fn extract_boolean<S: Into<String> + Display>(
         PropertyValue::Number(_) => panic!("Property {property} was found, but is of type Number"),
         PropertyValue::String(_) => panic!("Property {property} was found, but is of type String"),
         PropertyValue::Boolean(val) => *val,
+        PropertyValue::Colour(..) => {
+            panic!("Property {property} was found, but is of type Colour")
+        }
+    }
+}
+
+pub fn extract_colour<S: Into<String> + Display>(
+    map: &HashMap<String, PropertyValue>,
+    property: S,
+) -> (u8, u8, u8) {
+    match map
+        .get(&property.to_string())
+        .unwrap_or_else(|| panic!("Property {property} was not found in style."))
+    {
+        PropertyValue::Number(_) => panic!("Property {property} was found, but is of type Number"),
+        PropertyValue::String(_) => panic!("Property {property} was found, but is of type String"),
+        PropertyValue::Boolean(_) => panic!("Property {property} was found, but is of type Boolean"),
+        PropertyValue::Colour(r, g, b) => (*r, *g, *b)
     }
 }

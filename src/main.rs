@@ -5,104 +5,55 @@ mod error;
 mod interpreter;
 mod layout;
 mod style;
+mod render;
 
-use std::num::NonZeroU32;
-use std::rc::Rc;
-use winit::dpi::LogicalSize;
-use winit::event::{Event, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::WindowBuilder;
-
-use crate::layout::Rect;
+use sdl2::{event::Event, keyboard::Keycode};
 
 fn main() {
     let state = ast::GlobalState::new();
     interpreter::load_from_file(&state, "test.flm").unwrap();
-    println!("{}", state);
 
-    let event_loop = EventLoop::new().unwrap();
-    let window = Rc::new(
-        WindowBuilder::new()
-            .with_maximized(true)
-            .with_inner_size(LogicalSize::new(1920.0, 1080.0))
-            .build(&event_loop)
-            .unwrap(),
-    );
-    let context = softbuffer::Context::new(window.clone()).unwrap();
-    let mut surface = softbuffer::Surface::new(&context, window.clone()).unwrap();
+    let sdl_context = sdl2::init().expect("Could not create SDL2 context");
+    let vid_context = sdl_context.video().expect("Could not create video context");
+    let window = vid_context
+        .window("folium", 1920, 1080)
+        .fullscreen_desktop()
+        .input_grabbed()
+        .position_centered()
+        .borderless()
+        .build()
+        .unwrap();
 
-    event_loop
-        .run(move |event, elwt| {
-            elwt.set_control_flow(ControlFlow::Wait);
+    let mut canvas = window.into_canvas().build().unwrap();
+    let mut event_pump = sdl_context.event_pump().unwrap();
 
+    let mut slide_idx: usize = 0;
+    let number_of_slides = state.number_of_slides();
+
+    'run: loop {
+        render::render(&state, &mut canvas, slide_idx);
+
+        for event in event_pump.poll_iter() {
             match event {
-                Event::WindowEvent {
-                    window_id,
-                    event: WindowEvent::RedrawRequested,
-                } if window_id == window.id() => {
-                    let (width, height) = {
-                        let size = window.inner_size();
-                        (size.width, size.height)
-                    };
-                    surface
-                        .resize(
-                            NonZeroU32::new(width).unwrap(),
-                            NonZeroU32::new(height).unwrap(),
-                        )
-                        .unwrap();
-
-                    let slides = state.slides.borrow();
-                    let slide = &slides[0];
-
-                    let layouted_elems = slide.layout(
-                        &state,
-                        Some(Rect {
-                            x: 0,
-                            y: 0,
-                            w: width,
-                            h: height,
-                        }),
-                    );
-
-                    dbg!(&layouted_elems);
-
-                    for lem in &layouted_elems {
-                        println!(
-                            "{}, {}",
-                            lem.max_bounds.x + lem.max_bounds.w,
-                            lem.max_bounds.y + lem.max_bounds.h
-                        );
-                    }
-
-                    let mut buffer = surface.buffer_mut().unwrap();
-
-                    for y in 0..height {
-                        for x in 0..width {
-                            let idx = x % width + y * width;
-                            buffer[idx as usize] = 0x00ff00;
-                        }
-                    }
-
-                    for layout_elem in &layouted_elems {
-                        let rect = layout_elem.max_bounds;
-                        for y in rect.y..rect.y + rect.h {
-                            for x in rect.x..rect.x + rect.w {
-                                let idx = x % width + y * width;
-                                buffer[idx as usize] = 0xff0000;
-                            }
-                        }
-                    }
-
-                    buffer.present().unwrap();
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'run,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Right),
+                    ..
+                } => {
+                    slide_idx = (number_of_slides - 1).min(slide_idx + 1);
                 }
-                Event::WindowEvent {
-                    event: WindowEvent::CloseRequested,
-                    window_id,
-                } if window_id == window.id() => {
-                    elwt.exit();
+                Event::KeyDown {
+                    keycode: Some(Keycode::Left),
+                    ..
+                } => {
+                    slide_idx = slide_idx.saturating_sub(1);
                 }
                 _ => {}
             }
-        })
-        .unwrap();
+        }
+    }
 }

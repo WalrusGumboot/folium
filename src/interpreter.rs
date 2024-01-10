@@ -589,13 +589,30 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                         token: Value(PropertyValue::Boolean(boolean)),
                     });
                 } else {
+                    let token = 
+                    if working_value.starts_with('#')
+                        && working_value.len() == 7
+                        && working_value.chars().skip(1).all(|c| c.is_ascii_hexdigit())
+                    {
+                        // parseable as colour
+
+                        let colour = working_value.as_str();
+                        let r = u8::from_str_radix(&colour[1..3], 16).unwrap();
+                        let g = u8::from_str_radix(&colour[3..5], 16).unwrap();
+                        let b = u8::from_str_radix(&colour[5..7], 16).unwrap();
+
+                        Value(PropertyValue::Colour(r, g, b))
+                    } else {
+                        // TODO: don't leak memory
+                        Ident(working_value.leak())
+                    };
+
                     contiguous_tokens.push(FatToken {
                         location: TokenLocation {
                             line: line_idx,
                             col: col_idx,
                         },
-                        // TODO: don't leak memory
-                        token: Ident(working_value.leak()),
+                        token
                     });
                 }
             }

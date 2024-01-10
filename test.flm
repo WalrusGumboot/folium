@@ -13,4 +13,29 @@
    padding {
       amount: 30
    }
+
+   row {
+      gap: 30
+   }
+
+   col {
+      gap: 30
+   }
+]
+
+[
+   text( "uw ma" )
+
+   slide {
+      bg: #00ff00
+   }
+]
+
+[
+   text( "uw ma 2" )
+
+   slide {
+      bg: #0022ee,
+      margin: 50
+   }
 ]
