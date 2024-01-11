@@ -2,7 +2,7 @@
    row ( 
       col (
          text ( "hoofd" ) ,
-         text ( "schouders" ) ,
+         img ( "in.jpg" ) ,
          text ( "knie" ) ,
          row ( text ( "teen" ), code ( "let x: usize = 42;" ) ),
          padding ( text ( "je moeder" ) )
@@ -27,7 +27,9 @@
    text( "uw ma" )
 
    slide {
-      bg: #00ff00
+      bg: #00ff00,
+      width: 500,
+      height: 500
    }
 ]
 

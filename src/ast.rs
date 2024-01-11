@@ -90,6 +90,10 @@ impl GlobalState {
     pub fn number_of_slides(&self) -> usize {
         self.slides.borrow().len()
     }
+
+    pub fn number_of_elements(&self) -> usize {
+        self.elements.borrow().len()
+    }
 }
 
 impl std::fmt::Display for GlobalState {

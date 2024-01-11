@@ -13,6 +13,15 @@ pub struct Rect {
     pub h: u32,
 }
 
+pub fn folium_to_sdl_rect(folium_rect: Rect) -> sdl2::rect::Rect {
+    sdl2::rect::Rect::new(
+        folium_rect.x as i32,
+        folium_rect.y as i32,
+        folium_rect.w,
+        folium_rect.h,
+    )
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LayoutElement {
     pub element: AbstractElementID,
@@ -38,7 +47,7 @@ impl AbstractElement {
                     (area.w - (elems.len() - 1) as u32 * row_gap) / elems.len() as u32;
 
                 elems
-                    .into_iter()
+                    .iter()
                     .enumerate()
                     .flat_map(|(el_idx, el)| {
                         let bounds = Rect {
@@ -66,7 +75,7 @@ impl AbstractElement {
                 let single_el_height =
                     (area.h - ((elems.len() as u32 - 1) - 1) * col_gap) / elems.len() as u32;
                 elems
-                    .into_iter()
+                    .iter()
                     .enumerate()
                     .flat_map(|(el_idx, el)| {
                         let bounds = Rect {
@@ -117,10 +126,6 @@ impl AbstractElement {
 impl Slide {
     /// Layouting a slide positions elements on the slide.
     pub fn layout(&self, global: &GlobalState, size_override: Option<Rect>) -> Vec<LayoutElement> {
-        if size_override.is_some() {
-            println!("got size override {:?}", size_override.unwrap());
-        }
-
         let slide_styles = self
             .style_map()
             .styles_for_target(StyleTarget::Slide)

@@ -375,19 +375,17 @@ fn split_child_elements<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a>>>(
 
         if token_group.is_empty() {
             break;
-        } else {
-            if matches!(
-                token_group[0],
-                FatToken {
-                    token: ListSeparator,
-                    ..
-                }
-            ) {
-                // TODO: de-uglify this
-                children.push(token_group.split_at(1).1.to_vec());
-            } else {
-                children.push(token_group);
+        } else if matches!(
+            token_group[0],
+            FatToken {
+                token: ListSeparator,
+                ..
             }
+        ) {
+            // TODO: de-uglify this
+            children.push(token_group.split_at(1).1.to_vec());
+        } else {
+            children.push(token_group);
         }
     }
 
@@ -589,8 +587,7 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                         token: Value(PropertyValue::Boolean(boolean)),
                     });
                 } else {
-                    let token = 
-                    if working_value.starts_with('#')
+                    let token = if working_value.starts_with('#')
                         && working_value.len() == 7
                         && working_value.chars().skip(1).all(|c| c.is_ascii_hexdigit())
                     {
@@ -612,7 +609,7 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                             line: line_idx,
                             col: col_idx,
                         },
-                        token
+                        token,
                     });
                 }
             }
