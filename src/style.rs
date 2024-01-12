@@ -40,9 +40,10 @@ impl StyleTarget {
                         String::from("font"),
                         PropertyValue::String(String::from("Liberation Serif")),
                     ),
+                    (String::from("fill"), PropertyValue::Colour(0, 0, 0))
                 ]),
                 ElementType::Code => HashMap::from([
-                    (String::from("size"), PropertyValue::Number(16)),
+                    (String::from("size"), PropertyValue::Number(32)),
                     (
                         String::from("font"),
                         PropertyValue::String(String::from("Liberation Mono")),
@@ -59,7 +60,7 @@ impl StyleTarget {
                 (String::from("width"), PropertyValue::Number(1920)),
                 (String::from("height"), PropertyValue::Number(1080)),
                 (String::from("margin"), PropertyValue::Number(20)),
-                (String::from("bg"), PropertyValue::Colour(235, 218, 199))
+                (String::from("bg"), PropertyValue::Colour(235, 218, 199)),
             ]),
         }
     }
@@ -209,7 +210,9 @@ pub fn extract_colour<S: Into<String> + Display>(
     {
         PropertyValue::Number(_) => panic!("Property {property} was found, but is of type Number"),
         PropertyValue::String(_) => panic!("Property {property} was found, but is of type String"),
-        PropertyValue::Boolean(_) => panic!("Property {property} was found, but is of type Boolean"),
-        PropertyValue::Colour(r, g, b) => (*r, *g, *b)
+        PropertyValue::Boolean(_) => {
+            panic!("Property {property} was found, but is of type Boolean")
+        }
+        PropertyValue::Colour(r, g, b) => (*r, *g, *b),
     }
 }

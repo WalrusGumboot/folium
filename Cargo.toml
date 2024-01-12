@@ -7,5 +7,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.4.14", features = ["derive"] }
+fontdb = "0.16.0"
+fontdue = "0.8.0"
 itertools = "0.12.0"
 sdl2 = { version = "0.36.0", features = ["ttf", "image"] }

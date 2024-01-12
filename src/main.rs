@@ -33,6 +33,9 @@ enum FoliumSubcommand {
     Present,
     /// Inspect a .flm file and print some info. Can also be used as a check for syntax errors
     Inspect,
+    /// Lists all possible font values available for styling.
+    #[command(subcommand_negates_reqs = true)]
+    ListFonts
 }
 
 fn main() {
@@ -56,15 +59,14 @@ fn main() {
                 let surface = sdl2::surface::Surface::new(
                     dimensions.0,
                     dimensions.1,
-                    sdl2::pixels::PixelFormatEnum::RGB24,
+                    sdl2::pixels::PixelFormatEnum::RGBA32,
                 )
                 .unwrap();
                 let mut canvas = surface.into_canvas().unwrap();
                 let texture_creator = canvas.texture_creator();
+                let rendering_data = render::initialise_rendering_data(&state, &texture_creator);
 
-                let texture_map = render::generate_textures(&state, &texture_creator);
-
-                render::render(&state, &mut canvas, i, false, &texture_map);
+                render::render(&state, &mut canvas, i, false, &rendering_data);
                 canvas
                     .into_surface()
                     .save(output.join(format!("{}.png", i + 1)))
@@ -86,13 +88,17 @@ fn main() {
             let mut canvas = window.into_canvas().build().unwrap();
             let mut event_pump = sdl_context.event_pump().unwrap();
 
-            let mut texture_creator = canvas.texture_creator();
-            let texture_map = render::generate_textures(&state, &texture_creator);
-
+            let texture_creator = canvas.texture_creator();
+            let rendering_data = render::initialise_rendering_data(&state, &texture_creator);
             let mut slide_idx: usize = 0;
 
+            let mut window_needs_redraw = true;
+
             'run: loop {
-                render::render(&state, &mut canvas, slide_idx, true, &texture_map);
+                if window_needs_redraw {
+                    render::render(&state, &mut canvas, slide_idx, true, &rendering_data);
+                    window_needs_redraw = false;
+                }
                 for event in event_pump.poll_iter() {
                     match event {
                         Event::Quit { .. }
@@ -104,13 +110,21 @@ fn main() {
                             keycode: Some(Keycode::Right),
                             ..
                         } => {
-                            slide_idx = (number_of_slides - 1).min(slide_idx + 1);
+                            let new_idx = (number_of_slides - 1).min(slide_idx + 1);
+                            if new_idx != slide_idx {
+                                slide_idx = new_idx;
+                                window_needs_redraw = true;
+                            }
                         }
                         Event::KeyDown {
                             keycode: Some(Keycode::Left),
                             ..
                         } => {
-                            slide_idx = slide_idx.saturating_sub(1);
+                            let new_idx = slide_idx.saturating_sub(1);
+                            if new_idx != slide_idx {
+                                slide_idx = new_idx;
+                                window_needs_redraw = true;
+                            } 
                         }
                         _ => {}
                     }
@@ -121,6 +135,18 @@ fn main() {
         }
         FoliumSubcommand::Inspect => {
             println!("{state}");
-        }
+        },
+        FoliumSubcommand::ListFonts => {
+            let mut database = fontdb::Database::new();
+            database.load_system_fonts();
+            let mut fonts = database
+                .faces()
+                .map(|f| f.families.first().unwrap().0.clone())
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>();
+            fonts.sort();
+            println!("{}", fonts.join("\n"));
+        },
     }
 }
