@@ -35,7 +35,7 @@ enum FoliumSubcommand {
     Inspect,
     /// Lists all possible font values available for styling.
     #[command(subcommand_negates_reqs = true)]
-    ListFonts
+    ListFonts,
 }
 
 fn main() {
@@ -63,6 +63,8 @@ fn main() {
                 )
                 .unwrap();
                 let mut canvas = surface.into_canvas().unwrap();
+                canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
+
                 let texture_creator = canvas.texture_creator();
                 let rendering_data = render::initialise_rendering_data(&state, &texture_creator);
 
@@ -77,7 +79,7 @@ fn main() {
             let sdl_context = sdl2::init().expect("Could not create SDL2 context");
             let vid_context = sdl_context.video().expect("Could not create video context");
             let window = vid_context
-                .window("folium", 1920, 1080)
+                .window("folium", SLIDE_WIDTH, SLIDE_HEIGHT)
                 .fullscreen_desktop()
                 .input_grabbed()
                 .position_centered()
@@ -88,15 +90,21 @@ fn main() {
             let mut canvas = window.into_canvas().build().unwrap();
             let mut event_pump = sdl_context.event_pump().unwrap();
 
+            canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
+
             let texture_creator = canvas.texture_creator();
             let rendering_data = render::initialise_rendering_data(&state, &texture_creator);
             let mut slide_idx: usize = 0;
 
-            let mut window_needs_redraw = true;
+            let mut window_needs_redraw = false;
+            render::render(&state, &mut canvas, slide_idx, true, &rendering_data);
 
             'run: loop {
                 if window_needs_redraw {
+                    let tick = std::time::Instant::now();
                     render::render(&state, &mut canvas, slide_idx, true, &rendering_data);
+                    let tock = std::time::Instant::now();
+                    println!("rendered slide in {:6} us.", (tock - tick).as_micros());
                     window_needs_redraw = false;
                 }
                 for event in event_pump.poll_iter() {
@@ -124,7 +132,7 @@ fn main() {
                             if new_idx != slide_idx {
                                 slide_idx = new_idx;
                                 window_needs_redraw = true;
-                            } 
+                            }
                         }
                         _ => {}
                     }
@@ -135,7 +143,7 @@ fn main() {
         }
         FoliumSubcommand::Inspect => {
             println!("{state}");
-        },
+        }
         FoliumSubcommand::ListFonts => {
             let mut database = fontdb::Database::new();
             database.load_system_fonts();
@@ -147,6 +155,6 @@ fn main() {
                 .collect::<Vec<_>>();
             fonts.sort();
             println!("{}", fonts.join("\n"));
-        },
+        }
     }
 }

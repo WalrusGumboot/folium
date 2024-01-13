@@ -810,7 +810,7 @@ mod tests {
 
         let padding_style = slide
             .style_map()
-            .styles_for_target(StyleTarget::Anonymous(Padding))
+            .styles_for_target(&StyleTarget::Anonymous(Padding))
             .unwrap();
         let padding_amount = padding_style.get(&String::from("amount")).unwrap();
         assert_eq!(padding_amount, &PropertyValue::Number(10))
@@ -827,7 +827,7 @@ mod tests {
 
         let slide_style = slide
             .style_map()
-            .styles_for_target(StyleTarget::Slide)
+            .styles_for_target(&StyleTarget::Slide)
             .unwrap();
         let height = slide_style.get(&String::from("height")).unwrap();
         let width = slide_style.get(&String::from("width")).unwrap();

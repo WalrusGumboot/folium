@@ -13,6 +13,17 @@ pub struct Rect {
     pub h: u32,
 }
 
+impl Rect {
+    pub fn with_margin(&self, margin: u32) -> Self {
+        Self {
+            x: self.x + margin,
+            y: self.y + margin,
+            w: self.w - 2 * margin,
+            h: self.h - 2 * margin
+        }
+    }
+}
+
 pub fn folium_to_sdl_rect(folium_rect: Rect) -> sdl2::rect::Rect {
     sdl2::rect::Rect::new(
         folium_rect.x as i32,
@@ -39,7 +50,7 @@ impl AbstractElement {
             AbstractElementData::Row(elems) => {
                 let row_gap = extract_number(
                     style_map
-                        .styles_for_target(StyleTarget::Anonymous(ElementType::Row))
+                        .styles_for_target(&StyleTarget::Anonymous(ElementType::Row))
                         .expect("no style map for rows was found"),
                     "gap",
                 );
@@ -68,7 +79,7 @@ impl AbstractElement {
             AbstractElementData::Col(elems) => {
                 let col_gap = extract_number(
                     style_map
-                        .styles_for_target(StyleTarget::Anonymous(ElementType::Col))
+                        .styles_for_target(&StyleTarget::Anonymous(ElementType::Col))
                         .expect("no style map for rows was found"),
                     "gap",
                 );
@@ -95,16 +106,11 @@ impl AbstractElement {
             AbstractElementData::Padding(elem) => {
                 let padding_amount = extract_number(
                     style_map
-                        .styles_for_target(StyleTarget::Anonymous(ElementType::Padding))
+                        .styles_for_target(&StyleTarget::Anonymous(ElementType::Padding))
                         .expect("no style map for paddings was found"),
                     "amount",
                 );
-                let new_bound = Rect {
-                    x: area.x + padding_amount,
-                    y: area.y + padding_amount,
-                    w: area.w - 2 * padding_amount,
-                    h: area.h - 2 * padding_amount,
-                };
+                let new_bound = area.with_margin(padding_amount);
 
                 global
                     .get_element_by_id(*elem)
@@ -128,7 +134,7 @@ impl Slide {
     pub fn layout(&self, global: &GlobalState, size_override: Option<Rect>) -> Vec<LayoutElement> {
         let slide_styles = self
             .style_map()
-            .styles_for_target(StyleTarget::Slide)
+            .styles_for_target(&StyleTarget::Slide)
             .expect("No default slide style was found.");
 
         let slide_content = global.get_element_by_id(self.content()).unwrap();

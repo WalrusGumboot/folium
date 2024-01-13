@@ -128,7 +128,7 @@ pub enum AbstractElementData {
     None,
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ElementType {
     Row,
     Col,
@@ -165,9 +165,9 @@ impl<'a> TryFrom<&'a str> for ElementType {
     type Error = FoliumError<'a>;
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         match value {
-            "col" => Ok(ElementType::Col),
-            "row" => Ok(ElementType::Row),
-            "text" => Ok(ElementType::Text),
+            "col" | "c" => Ok(ElementType::Col),
+            "row" | "r" => Ok(ElementType::Row),
+            "text" | "t" => Ok(ElementType::Text),
             "code" => Ok(ElementType::Code),
             "img" => Ok(ElementType::Image),
             "none" => Ok(ElementType::ElNone),

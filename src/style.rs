@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use crate::{SLIDE_WIDTH, SLIDE_HEIGHT};
 use crate::ast::ElementType;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -12,7 +13,7 @@ pub enum PropertyValue {
     Colour(u8, u8, u8),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum StyleTarget {
     Named(String),
     Anonymous(ElementType),
@@ -28,10 +29,10 @@ impl StyleTarget {
                     HashMap::from([(String::from("amount"), PropertyValue::Number(12))])
                 }
                 ElementType::Row => {
-                    HashMap::from([(String::from("gap"), PropertyValue::Number(6))])
+                    HashMap::from([(String::from("gap"), PropertyValue::Number(32))])
                 }
                 ElementType::Col => {
-                    HashMap::from([(String::from("gap"), PropertyValue::Number(6))])
+                    HashMap::from([(String::from("gap"), PropertyValue::Number(32))])
                 }
                 ElementType::Centre => HashMap::new(),
                 ElementType::Text => HashMap::from([
@@ -40,9 +41,12 @@ impl StyleTarget {
                         String::from("font"),
                         PropertyValue::String(String::from("Liberation Serif")),
                     ),
-                    (String::from("fill"), PropertyValue::Colour(0, 0, 0))
+                    (String::from("fill"), PropertyValue::Colour(0, 0, 0)),
                 ]),
                 ElementType::Code => HashMap::from([
+                    (String::from("bg"), PropertyValue::Colour(30, 30, 30)),
+                    (String::from("fill"), PropertyValue::Colour(255, 255, 255)),
+                    (String::from("margin"), PropertyValue::Number(20)),
                     (String::from("size"), PropertyValue::Number(32)),
                     (
                         String::from("font"),
@@ -57,8 +61,8 @@ impl StyleTarget {
                 ElementType::ElNone => HashMap::new(),
             },
             StyleTarget::Slide => HashMap::from([
-                (String::from("width"), PropertyValue::Number(1920)),
-                (String::from("height"), PropertyValue::Number(1080)),
+                (String::from("width"), PropertyValue::Number(SLIDE_WIDTH)),
+                (String::from("height"), PropertyValue::Number(SLIDE_HEIGHT)),
                 (String::from("margin"), PropertyValue::Number(20)),
                 (String::from("bg"), PropertyValue::Colour(235, 218, 199)),
             ]),
@@ -96,9 +100,9 @@ impl StyleMap {
 
     pub fn styles_for_target(
         &self,
-        target: StyleTarget,
+        target: &StyleTarget,
     ) -> Option<&HashMap<String, PropertyValue>> {
-        self.styles.get(&target)
+        self.styles.get(target)
     }
 }
 
