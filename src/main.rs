@@ -19,8 +19,9 @@ pub const SLIDE_HEIGHT: u32 = 1080;
 #[derive(Parser)]
 #[command(author = "Simeon Duwel", about = "Presentation renderer and viewer")]
 struct FoliumArgs {
-    /// The source .flm file containing your presentation
-    input: PathBuf,
+    #[arg(long, short, default_value_t = false, global = true)]
+    /// Whether or not to draw red 1px rectangles around all elements; useful for debugging layout issues
+    rects: bool,
     #[command(subcommand)]
     command: FoliumSubcommand,
 }
@@ -28,11 +29,22 @@ struct FoliumArgs {
 #[derive(Subcommand)]
 enum FoliumSubcommand {
     /// Render out a set of slides as images to a folder
-    Render { output: PathBuf },
+    Render {
+        /// The source .flm file containing your presentation
+        input: PathBuf,
+        /// The directory path to write the files to
+        output: PathBuf,
+    },
     /// Open a presentation window
-    Present,
+    Present {
+        /// The source .flm file containing your presentation
+        input: PathBuf,
+    },
     /// Inspect a .flm file and print some info. Can also be used as a check for syntax errors
-    Inspect,
+    Inspect {
+        /// The source .flm file containing your presentation
+        input: PathBuf,
+    },
     /// Lists all possible font values available for styling.
     #[command(subcommand_negates_reqs = true)]
     ListFonts,
@@ -41,13 +53,13 @@ enum FoliumSubcommand {
 fn main() {
     let args = FoliumArgs::parse();
 
-    let state = ast::GlobalState::new();
-    interpreter::load_from_file(&state, args.input).unwrap();
-
-    let number_of_slides = state.number_of_slides();
-
     match args.command {
-        FoliumSubcommand::Render { output } => {
+        FoliumSubcommand::Render { input, output } => {
+            let state = ast::GlobalState::new();
+            interpreter::load_from_file(&state, input).unwrap();
+
+            let number_of_slides = state.number_of_slides();
+
             assert!(!output.is_file(), "{} is a file", output.display());
 
             if !output.exists() {
@@ -68,14 +80,19 @@ fn main() {
                 let texture_creator = canvas.texture_creator();
                 let rendering_data = render::initialise_rendering_data(&state, &texture_creator);
 
-                render::render(&state, &mut canvas, i, false, &rendering_data);
+                render::render(&state, &mut canvas, i, false, &rendering_data, args.rects);
                 canvas
                     .into_surface()
                     .save(output.join(format!("{}.png", i + 1)))
                     .unwrap();
             }
         }
-        FoliumSubcommand::Present => {
+        FoliumSubcommand::Present { input } => {
+            let state = ast::GlobalState::new();
+            interpreter::load_from_file(&state, input).unwrap();
+
+            let number_of_slides = state.number_of_slides();
+
             let sdl_context = sdl2::init().expect("Could not create SDL2 context");
             let vid_context = sdl_context.video().expect("Could not create video context");
             let window = vid_context
@@ -97,12 +114,26 @@ fn main() {
             let mut slide_idx: usize = 0;
 
             let mut window_needs_redraw = false;
-            render::render(&state, &mut canvas, slide_idx, true, &rendering_data);
+            render::render(
+                &state,
+                &mut canvas,
+                slide_idx,
+                true,
+                &rendering_data,
+                args.rects,
+            );
 
             'run: loop {
                 if window_needs_redraw {
                     let tick = std::time::Instant::now();
-                    render::render(&state, &mut canvas, slide_idx, true, &rendering_data);
+                    render::render(
+                        &state,
+                        &mut canvas,
+                        slide_idx,
+                        true,
+                        &rendering_data,
+                        args.rects,
+                    );
                     let tock = std::time::Instant::now();
                     println!("rendered slide in {:6} us.", (tock - tick).as_micros());
                     window_needs_redraw = false;
@@ -141,7 +172,9 @@ fn main() {
                 std::thread::sleep(std::time::Duration::from_secs_f64(60f64.recip()))
             }
         }
-        FoliumSubcommand::Inspect => {
+        FoliumSubcommand::Inspect { input } => {
+            let state = ast::GlobalState::new();
+            interpreter::load_from_file(&state, input).unwrap();
             println!("{state}");
         }
         FoliumSubcommand::ListFonts => {

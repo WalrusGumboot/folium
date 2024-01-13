@@ -67,9 +67,9 @@ impl GlobalState {
                 .into_iter()
                 .flat_map(|child| self.traverse(child))
                 .collect(),
-            AbstractElementData::Centre(child) | AbstractElementData::Padding(child) => {
-                self.traverse(child)
-            }
+            AbstractElementData::Centre(child)
+            | AbstractElementData::Padding(child)
+            | AbstractElementData::Sized(child) => self.traverse(child),
             AbstractElementData::Text(_)
             | AbstractElementData::Code(_)
             | AbstractElementData::Image(_)
@@ -118,6 +118,7 @@ impl std::fmt::Display for GlobalState {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum AbstractElementData {
+    Sized(AbstractElementID),
     Row(Vec<AbstractElementID>),
     Col(Vec<AbstractElementID>),
     Centre(AbstractElementID),
@@ -130,6 +131,7 @@ pub enum AbstractElementData {
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ElementType {
+    Sized,
     Row,
     Col,
     Centre,
@@ -143,6 +145,7 @@ pub enum ElementType {
 impl ElementType {
     pub const fn string_rep(&self) -> &'static str {
         match self {
+            ElementType::Sized => "sized",
             ElementType::Row => "row",
             ElementType::Col => "col",
             ElementType::Centre => "centre",
@@ -165,6 +168,7 @@ impl<'a> TryFrom<&'a str> for ElementType {
     type Error = FoliumError<'a>;
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         match value {
+            "sized" => Ok(ElementType::Sized),
             "col" | "c" => Ok(ElementType::Col),
             "row" | "r" => Ok(ElementType::Row),
             "text" | "t" => Ok(ElementType::Text),
@@ -212,6 +216,12 @@ impl AbstractElement {
 
     pub fn id(&self) -> AbstractElementID {
         self.id
+    }
+}
+
+impl PartialEq for AbstractElement {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
 

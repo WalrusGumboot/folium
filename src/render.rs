@@ -117,12 +117,11 @@ pub fn initialise_rendering_data<'a, T: LoadTexture>(
                                 todo!("cannot handle shared files yet")
                             }
                         }
+                    } else if cfg!(feature = "builtin-fonts") {
+                        eprintln!("warning: specified font '{ideal_font_name}' not found. Use the 'list-fonts' subcommand to see what fonts Folium can use. Falling back to default font");
+                        include_bytes!("assets/newsreader.ttf").to_vec()
                     } else {
-                        if cfg!(feature = "builtin-fonts") {
-                            include_bytes!("assets/newsreader.ttf").to_vec()
-                        } else {
-                            panic!("Specified font not found. Use the 'list-fonts' subcommand to see what fonts Folium can use.")
-                        }
+                        panic!("Specified font '{ideal_font_name}' not found, exiting. Use the 'list-fonts' subcommand to see what fonts Folium can use.")
                     };
 
                     // SDL2's TTF rendering is pretty horrible and notably quite slow.
@@ -155,6 +154,7 @@ pub fn initialise_rendering_data<'a, T: LoadTexture>(
                         .unwrap(),
                 )
             })
+            .inspect(|(id, tex)| println!("{id} has texture {:?}", tex.query()))
             .collect(),
         font_database: db,
         fonts_for_targets,
@@ -167,15 +167,32 @@ pub fn render<T: RenderTarget>(
     slide_idx: usize,
     fullscreen: bool,
     render_data: &RenderData,
+    debug_rects: bool,
 ) {
     let slide_data = generate_slide_data(global, slide_idx, fullscreen);
 
     target.set_draw_color(slide_data.background);
     target.clear();
 
+    if debug_rects {
+        target.set_draw_color((255, 0, 0));
+        target
+            .draw_rects(
+                &slide_data
+                    .layout_rects
+                    .iter()
+                    .map(|r| folium_to_sdl_rect(r.max_bounds))
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap();
+    }
+
     for rect in slide_data.layout_rects {
         let element = global.get_element_by_id(rect.element).unwrap();
         match element.data() {
+            AbstractElementData::Sized(_) => {
+                panic!("Sized should never have a layout element of its own")
+            }
             AbstractElementData::Row(_) => {
                 panic!("Row should never have a layout element of its own")
             }
@@ -304,7 +321,7 @@ pub fn render<T: RenderTarget>(
                         }
                     }
                 }
-            } // TODO: add code-specific features
+            } // TODO: add code-specific features, like syntax highlighting etc
             AbstractElementData::Image(..) => {
                 let texture = render_data.texture_map.get(&element.id()).unwrap();
                 target

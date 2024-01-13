@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::hash::Hash;
 
-use crate::{SLIDE_WIDTH, SLIDE_HEIGHT};
 use crate::ast::ElementType;
+use crate::layout::SizeSpec;
+use crate::{SLIDE_HEIGHT, SLIDE_WIDTH};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PropertyValue {
@@ -11,6 +13,7 @@ pub enum PropertyValue {
     String(String),
     Boolean(bool),
     Colour(u8, u8, u8),
+    SizeSpec(SizeSpec),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -25,6 +28,7 @@ impl StyleTarget {
         match self {
             StyleTarget::Named(..) => HashMap::new(),
             StyleTarget::Anonymous(el_type) => match el_type {
+                ElementType::Sized => HashMap::new(),
                 ElementType::Padding => {
                     HashMap::from([(String::from("amount"), PropertyValue::Number(12))])
                 }
@@ -36,7 +40,7 @@ impl StyleTarget {
                 }
                 ElementType::Centre => HashMap::new(),
                 ElementType::Text => HashMap::from([
-                    (String::from("size"), PropertyValue::Number(16)),
+                    (String::from("size"), PropertyValue::Number(32)),
                     (
                         String::from("font"),
                         PropertyValue::String(String::from("Liberation Serif")),
@@ -63,7 +67,7 @@ impl StyleTarget {
             StyleTarget::Slide => HashMap::from([
                 (String::from("width"), PropertyValue::Number(SLIDE_WIDTH)),
                 (String::from("height"), PropertyValue::Number(SLIDE_HEIGHT)),
-                (String::from("margin"), PropertyValue::Number(20)),
+                (String::from("margin"), PropertyValue::Number(64)),
                 (String::from("bg"), PropertyValue::Colour(235, 218, 199)),
             ]),
         }
@@ -165,6 +169,9 @@ pub fn extract_number<S: Into<String> + Display>(
         PropertyValue::Colour(..) => {
             panic!("Property {property} was found, but is of type Colour")
         }
+        PropertyValue::SizeSpec(_) => {
+            panic!("Property {property} was found, but is of type SizeSpec")
+        }
     }
 }
 
@@ -184,6 +191,9 @@ pub fn extract_string<S: Into<String> + Display>(
         PropertyValue::Colour(..) => {
             panic!("Property {property} was found, but is of type Colour")
         }
+        PropertyValue::SizeSpec(_) => {
+            panic!("Property {property} was found, but is of type SizeSpec")
+        }
     }
 }
 
@@ -200,6 +210,9 @@ pub fn extract_boolean<S: Into<String> + Display>(
         PropertyValue::Boolean(val) => *val,
         PropertyValue::Colour(..) => {
             panic!("Property {property} was found, but is of type Colour")
+        }
+        PropertyValue::SizeSpec(_) => {
+            panic!("Property {property} was found, but is of type SizeSpec")
         }
     }
 }
@@ -218,5 +231,28 @@ pub fn extract_colour<S: Into<String> + Display>(
             panic!("Property {property} was found, but is of type Boolean")
         }
         PropertyValue::Colour(r, g, b) => (*r, *g, *b),
+        PropertyValue::SizeSpec(_) => {
+            panic!("Property {property} was found, but is of type SizeSpec")
+        }
+    }
+}
+
+pub fn extract_size_spec<S: Into<String> + Display>(
+    map: &HashMap<String, PropertyValue>,
+    property: S,
+) -> SizeSpec {
+    match map
+        .get(&property.to_string())
+        .unwrap_or_else(|| panic!("Property {property} was not found in style."))
+    {
+        PropertyValue::Number(_) => panic!("Property {property} was found, but is of type Number"),
+        PropertyValue::String(_) => panic!("Property {property} was found, but is of type String"),
+        PropertyValue::Boolean(_) => {
+            panic!("Property {property} was found, but is of type Boolean")
+        }
+        PropertyValue::Colour(..) => {
+            panic!("Property {property} was found, but is of type Colour")
+        }
+        PropertyValue::SizeSpec(spec) => *spec,
     }
 }

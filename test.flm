@@ -1,34 +1,16 @@
 [
-   row ( 
-      col (
-         text ( "hoofd" ) ,
-         img ( "in.jpg" ) ,
-         knieTekst :: text ( "knie" ) ,
-         row ( text ( "teen" ), code ( "let x = 42u16; jakobus jakobus jakobus jakobus jakobus" ) ),
-         padding ( text ( "je moeder" ) )
-      ), 
-      text ( "kaas" )
+   col (
+      titleContainer :: sized ( title :: text ("Diatitel") ),
+      text ( "hoofdtekst" )
    )
 
-   padding {
-      amount: 30
+   title {
+      size: 80,
+      font: "Tiempos Headline",
+      fill: #2e1128
    }
 
-   text {
-      size: 40
-   }
-
-   knieTekst {
-      size: 100,
-      font: "Tiempos HeadlineKKKK",
-      fill: #0000ff
-   }
-]
-
-[
-   text ("joop")
-
-   text {
-      size: 40
+   titleContainer {
+      size: <_;80>
    }
 ]

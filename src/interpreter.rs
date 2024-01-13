@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::ast::ElementType::*;
 use crate::ast::{AbstractElementData, AbstractElementID, ElementType, GlobalState, Slide};
 use crate::error::FoliumError;
+use crate::layout::SizeSpec;
 use crate::style::{PropertyValue, StyleMap, StyleTarget};
 
 use itertools::Itertools;
@@ -263,6 +264,14 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
 
     Ok(match element_type {
         ElNone => global.push_element(AbstractElementData::None, element_type, maybe_name),
+        Sized => global.push_element(
+            AbstractElementData::Sized(
+                parse_content_definition(content_tokens.into_iter(), global)
+                    .unwrap_or_else(|err| panic!("{err}")),
+            ),
+            element_type,
+            maybe_name,
+        ),
         Text => global.push_element(
             AbstractElementData::Text(match content_tokens[0].token {
                 Value(PropertyValue::String(ref s)) => s.clone(),
@@ -599,6 +608,37 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                         let b = u8::from_str_radix(&colour[5..7], 16).unwrap();
 
                         Value(PropertyValue::Colour(r, g, b))
+                    } else if working_value.starts_with('<') {
+                        // parseable as size spec:   <w, h> where w and h may be one of '_' or Number
+
+                        // TODO: add error handling here
+                        // dbg!(&working_value);
+                        let (width, height) = working_value
+                            .trim_matches(&['<', '>'])
+                            .split_once(';')
+                            .unwrap();
+                        let width_val = if width == "_" {
+                            None
+                        } else {
+                            Some(width.parse::<u32>().unwrap())
+                        };
+                        let height_val = if height == "_" {
+                            None
+                        } else {
+                            Some(height.parse::<u32>().unwrap())
+                        };
+
+                        if width_val.is_none() && height_val.is_none() {
+                            eprintln!(
+                                "warning: found size spec at line {}, col {} that does nothing",
+                                line_idx, col_idx
+                            );
+                        }
+
+                        Value(PropertyValue::SizeSpec(SizeSpec {
+                            width: width_val,
+                            height: height_val,
+                        }))
                     } else {
                         // TODO: don't leak memory
                         Ident(working_value.leak())
