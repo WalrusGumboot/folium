@@ -97,14 +97,14 @@ fn main() {
             let vid_context = sdl_context.video().expect("Could not create video context");
             let window = vid_context
                 .window("folium", SLIDE_WIDTH, SLIDE_HEIGHT)
-                .fullscreen_desktop()
-                .input_grabbed()
                 .position_centered()
-                .borderless()
                 .build()
                 .unwrap();
 
             let mut canvas = window.into_canvas().build().unwrap();
+            canvas.set_draw_color((0, 0, 0));
+            canvas.clear();
+            canvas.present();
             let mut event_pump = sdl_context.event_pump().unwrap();
 
             canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
@@ -113,17 +113,9 @@ fn main() {
             let rendering_data = render::initialise_rendering_data(&state, &texture_creator);
             let mut slide_idx: usize = 0;
 
-            let mut window_needs_redraw = false;
-            render::render(
-                &state,
-                &mut canvas,
-                slide_idx,
-                true,
-                &rendering_data,
-                args.rects,
-            );
+            let mut window_needs_redraw = true;
 
-            'run: loop {
+            for event in event_pump.wait_iter() {
                 if window_needs_redraw {
                     let tick = std::time::Instant::now();
                     render::render(
@@ -138,39 +130,36 @@ fn main() {
                     println!("rendered slide in {:6} us.", (tock - tick).as_micros());
                     window_needs_redraw = false;
                 }
-                for event in event_pump.poll_iter() {
-                    match event {
-                        Event::Quit { .. }
-                        | Event::KeyDown {
-                            keycode: Some(Keycode::Escape),
-                            ..
-                        } => break 'run,
-                        Event::KeyDown {
-                            keycode: Some(Keycode::Right),
-                            ..
-                        } => {
-                            let new_idx = (number_of_slides - 1).min(slide_idx + 1);
-                            if new_idx != slide_idx {
-                                slide_idx = new_idx;
-                                window_needs_redraw = true;
-                            }
-                        }
-                        Event::KeyDown {
-                            keycode: Some(Keycode::Left),
-                            ..
-                        } => {
-                            let new_idx = slide_idx.saturating_sub(1);
-                            if new_idx != slide_idx {
-                                slide_idx = new_idx;
-                                window_needs_redraw = true;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
 
-                std::thread::sleep(std::time::Duration::from_secs_f64(60f64.recip()))
-            }
+                match event {
+                    Event::Quit { .. }
+                    | Event::KeyDown {
+                        keycode: Some(Keycode::Escape),
+                        ..
+                    } => break,
+                    Event::KeyDown {
+                        keycode: Some(Keycode::Right),
+                        ..
+                    } => {
+                        let new_idx = (number_of_slides - 1).min(slide_idx + 1);
+                        if new_idx != slide_idx {
+                            slide_idx = new_idx;
+                            window_needs_redraw = true;
+                        }
+                    }
+                    Event::KeyDown {
+                        keycode: Some(Keycode::Left),
+                        ..
+                    } => {
+                        let new_idx = slide_idx.saturating_sub(1);
+                        if new_idx != slide_idx {
+                            slide_idx = new_idx;
+                            window_needs_redraw = true;
+                        }
+                    }
+                    _ => {}
+                }
+            };
         }
         FoliumSubcommand::Inspect { input } => {
             let state = ast::GlobalState::new();
