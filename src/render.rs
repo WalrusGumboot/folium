@@ -204,13 +204,7 @@ pub fn render<T: RenderTarget>(
             }
             AbstractElementData::Centre(_) => {} // TODO
             AbstractElementData::Text(text_to_be_rendered) => {
-                // TODO: this will only work properly when named styles work;
-                // for now, this will crash a lot because named styles do not
-                // fill in implicit style specifications
-                let text_style_target = match element.name() {
-                    Some(el_name) => StyleTarget::Named(el_name.to_owned()),
-                    None => StyleTarget::Anonymous(ElementType::Text),
-                };
+                let text_style_target = StyleTarget::reify(&element);
 
                 let text_style = slide_data
                     .styles
@@ -235,7 +229,10 @@ pub fn render<T: RenderTarget>(
                     max_height: Some(rect.max_bounds.h as f32),
                     ..Default::default()
                 });
-                layout.append(&[font], &TextStyle::new(text_to_be_rendered, font_size, 0));
+                layout.append(
+                    &[font],
+                    &TextStyle::new(&text_to_be_rendered.replace("\\n", "\n"), font_size, 0),
+                );
                 for glyph in layout.glyphs() {
                     let (_, coverage) = font.rasterize(glyph.parent, font_size);
 
@@ -259,13 +256,7 @@ pub fn render<T: RenderTarget>(
                 }
             }
             AbstractElementData::Code(code_to_be_rendered) => {
-                // TODO: this will only work properly when named styles work;
-                // for now, this will crash a lot because named styles do not
-                // fill in implicit style specifications
-                let code_style_target = match element.name() {
-                    Some(el_name) => StyleTarget::Named(el_name.to_owned()),
-                    None => StyleTarget::Anonymous(ElementType::Code),
-                };
+                let code_style_target = StyleTarget::reify(&element);
 
                 let code_style = slide_data
                     .styles
@@ -299,7 +290,10 @@ pub fn render<T: RenderTarget>(
                     max_height: Some(text_area.h as f32),
                     ..Default::default()
                 });
-                layout.append(&[font], &TextStyle::new(code_to_be_rendered, font_size, 0));
+                layout.append(
+                    &[font],
+                    &TextStyle::new(&code_to_be_rendered.replace("\\n", "\n"), font_size, 0),
+                );
                 for glyph in layout.glyphs() {
                     let (_, coverage) = font.rasterize(glyph.parent, font_size);
 

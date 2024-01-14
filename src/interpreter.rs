@@ -111,8 +111,6 @@ fn parse_content_definition<'a, I: std::fmt::Debug + Iterator<Item = FatToken<'a
         .next()
         .expect("could not parse name of following content item");
 
-    // TODO: check if name isn't already in use
-
     let (maybe_name, element_type, should_check_opening_paren): (
         Option<String>,
         ElementType,

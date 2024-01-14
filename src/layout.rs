@@ -52,15 +52,12 @@ impl AbstractElement {
         style_map: &StyleMap,
         area: Rect,
     ) -> Vec<LayoutElement> {
-        // TODO: take names into account!!!!!
+        let own_target = StyleTarget::reify(self);
+
         match self.data() {
             AbstractElementData::Sized(elem) => {
-                let size_spec = extract_size_spec(
-                    style_map
-                        .styles_for_target(&StyleTarget::Named(self.name().clone().unwrap()))
-                        .unwrap(),
-                    "size",
-                );
+                let size_spec =
+                    extract_size_spec(style_map.styles_for_target(&own_target).unwrap(), "size");
 
                 let used_width = if let Some(width) = size_spec.width {
                     if area.w < width {
@@ -97,7 +94,7 @@ impl AbstractElement {
             AbstractElementData::Row(elems) => {
                 let row_gap = extract_number(
                     style_map
-                        .styles_for_target(&StyleTarget::Anonymous(ElementType::Row))
+                        .styles_for_target(&own_target)
                         .expect("no style map for rows was found"),
                     "gap",
                 );
@@ -111,11 +108,11 @@ impl AbstractElement {
                 let all_widths = sized_elements
                     .iter()
                     .flat_map(|elem| {
+                        let currently_applicable_styles = StyleTarget::reify(elem);
+
                         extract_size_spec(
                             style_map
-                                .styles_for_target(&StyleTarget::Named(
-                                    elem.name().clone().unwrap(),
-                                ))
+                                .styles_for_target(&currently_applicable_styles)
                                 .unwrap(),
                             "size",
                         )
@@ -142,9 +139,7 @@ impl AbstractElement {
                         let bounds = if sized_elements.contains(&elem) {
                             let spec = extract_size_spec(
                                 style_map
-                                    .styles_for_target(&StyleTarget::Named(
-                                        elem.name().clone().unwrap(),
-                                    ))
+                                    .styles_for_target(&StyleTarget::reify(&elem))
                                     .unwrap(),
                                 "size",
                             );
@@ -182,7 +177,7 @@ impl AbstractElement {
             AbstractElementData::Col(elems) => {
                 let col_gap = extract_number(
                     style_map
-                        .styles_for_target(&StyleTarget::Anonymous(ElementType::Col))
+                        .styles_for_target(&own_target)
                         .expect("no style map for columns was found"),
                     "gap",
                 );
@@ -267,7 +262,7 @@ impl AbstractElement {
             AbstractElementData::Padding(elem) => {
                 let padding_amount = extract_number(
                     style_map
-                        .styles_for_target(&StyleTarget::Anonymous(ElementType::Padding))
+                        .styles_for_target(&own_target)
                         .expect("no style map for paddings was found"),
                     "amount",
                 );

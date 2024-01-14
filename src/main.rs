@@ -159,7 +159,7 @@ fn main() {
                     }
                     _ => {}
                 }
-            };
+            }
         }
         FoliumSubcommand::Inspect { input } => {
             let state = ast::GlobalState::new();

@@ -1,12 +1,12 @@
 [
    col (
       titleContainer :: sized ( title :: text ("Diatitel") ),
-      row ( text ( "hoofdtekst" ), img("in.jpg") )
+      row ( text ( "hoofdtekst\nuw ma" ), img("in.jpg") )
    )
 
    title {
       size: 80,
-      font: "Tiempos Headline",
+      font: "Newsreader",
       fill: #2e1128
    }
 

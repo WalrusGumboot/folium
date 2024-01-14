@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::path::PathBuf;
 
+use strum::EnumIter;
+
 use crate::error::FoliumError;
 use crate::style::StyleMap;
 
@@ -129,7 +131,7 @@ pub enum AbstractElementData {
     None,
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, EnumIter)]
 pub enum ElementType {
     Sized,
     Row,

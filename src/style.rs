@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::hash::Hash;
 
-use crate::ast::ElementType;
+use strum::IntoEnumIterator;
+
+use crate::ast::{AbstractElement, ElementType};
 use crate::layout::SizeSpec;
 use crate::{SLIDE_HEIGHT, SLIDE_WIDTH};
 
@@ -72,6 +74,13 @@ impl StyleTarget {
             ]),
         }
     }
+
+    pub fn reify(elem: &AbstractElement) -> Self {
+        match &elem.name() {
+            Some(name) => Self::Named(name.to_owned()),
+            None => Self::Anonymous(elem.el_type()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -112,43 +121,17 @@ impl StyleMap {
 
 impl Default for StyleMap {
     fn default() -> Self {
-        // TODO: make this nicer, e.g. compile-time errors if new enum variants are ever introduced
+        let mut style_map = StyleMap::new();
+        style_map.add_style(StyleTarget::Slide, StyleTarget::Slide.default_style());
+        for el in ElementType::iter() {
+            style_map.add_style(
+                StyleTarget::Anonymous(el),
+                StyleTarget::Anonymous(el).default_style(),
+            );
+        }
+
         Self {
-            styles: HashMap::from([
-                (StyleTarget::Slide, StyleTarget::Slide.default_style()),
-                (
-                    StyleTarget::Anonymous(ElementType::Centre),
-                    StyleTarget::Anonymous(ElementType::Centre).default_style(),
-                ),
-                (
-                    StyleTarget::Anonymous(ElementType::Code),
-                    StyleTarget::Anonymous(ElementType::Code).default_style(),
-                ),
-                (
-                    StyleTarget::Anonymous(ElementType::Col),
-                    StyleTarget::Anonymous(ElementType::Col).default_style(),
-                ),
-                (
-                    StyleTarget::Anonymous(ElementType::ElNone),
-                    StyleTarget::Anonymous(ElementType::ElNone).default_style(),
-                ),
-                (
-                    StyleTarget::Anonymous(ElementType::Image),
-                    StyleTarget::Anonymous(ElementType::Image).default_style(),
-                ),
-                (
-                    StyleTarget::Anonymous(ElementType::Padding),
-                    StyleTarget::Anonymous(ElementType::Padding).default_style(),
-                ),
-                (
-                    StyleTarget::Anonymous(ElementType::Row),
-                    StyleTarget::Anonymous(ElementType::Row).default_style(),
-                ),
-                (
-                    StyleTarget::Anonymous(ElementType::Text),
-                    StyleTarget::Anonymous(ElementType::Text).default_style(),
-                ),
-            ]),
+            styles: style_map.styles,
         }
     }
 }
