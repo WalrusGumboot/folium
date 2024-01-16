@@ -1,7 +1,10 @@
 [
    col (
       titleContainer :: sized ( title :: text ("Diatitel") ),
-      row ( text ( "hoofdtekst\nuw ma" ), img("in.jpg") )
+      row ( text ( "hoofdtekst,
+uw ma
+
+en tevens uwe vader" ), img("in.jpg") )
    )
 
    title {

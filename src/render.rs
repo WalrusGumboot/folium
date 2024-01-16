@@ -231,7 +231,7 @@ pub fn render<T: RenderTarget>(
                 });
                 layout.append(
                     &[font],
-                    &TextStyle::new(&text_to_be_rendered.replace("\\n", "\n"), font_size, 0),
+                    &TextStyle::new(text_to_be_rendered, font_size, 0),
                 );
                 for glyph in layout.glyphs() {
                     let (_, coverage) = font.rasterize(glyph.parent, font_size);
@@ -292,7 +292,7 @@ pub fn render<T: RenderTarget>(
                 });
                 layout.append(
                     &[font],
-                    &TextStyle::new(&code_to_be_rendered.replace("\\n", "\n"), font_size, 0),
+                    &TextStyle::new(code_to_be_rendered, font_size, 0),
                 );
                 for glyph in layout.glyphs() {
                     let (_, coverage) = font.rasterize(glyph.parent, font_size);

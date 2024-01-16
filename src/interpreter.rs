@@ -409,7 +409,7 @@ pub fn load_from_file<'a, P: AsRef<Path> + 'a>(
 
 pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>> {
     let mut all_characters = source
-        .lines()
+        .split_inclusive("\n")
         .enumerate()
         .filter(|(_, line)| !line.starts_with("//"))
         .flat_map(|(line_idx, line)| {
@@ -517,8 +517,21 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                         )
                     })
                     .flat_map(|elem| match elem {
-                        RawToken::NotYetParsed { value, .. } => Some(value),
-                        RawToken::AlreadyParsed { .. } => None,
+                        RawToken::NotYetParsed { value, .. } => Vec::from(&[value]),
+                        RawToken::AlreadyParsed { value, .. } => match value {
+                            OpeningSlideParen => "[",
+                            ClosingSlideParen => "]",
+                            Definition => "::",
+                            ValueAssignment => ":",
+                            ListSeparator => ",",
+                            OpeningArgsParen => "(",
+                            ClosingArgsParen => ")",
+                            OpeningParamsParen => "{",
+                            ClosingParamsParen => "}",
+                            StringDelim | Value(_) | Ident(_) => unreachable!(),
+                        }
+                        .chars()
+                        .collect(),
                     })
                     .collect::<String>();
                 contiguous_tokens.push(FatToken {
@@ -547,7 +560,7 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                 col_idx,
                 value,
             } => {
-                if value == ' ' {
+                if value == ' ' || value == '\n' {
                     continue;
                 }
 
@@ -562,6 +575,7 @@ pub fn load(global: &GlobalState, source: String) -> Result<(), FoliumError<'_>>
                             elem,
                             RawToken::AlreadyParsed { .. }
                                 | RawToken::NotYetParsed { value: ' ', .. }
+                                | RawToken::NotYetParsed { value: '\n', .. }
                                 | RawToken::NotYetParsed { value: ',', .. }
                         );
                         if retval {
